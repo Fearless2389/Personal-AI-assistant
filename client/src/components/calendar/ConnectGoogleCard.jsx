@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CalendarDays } from 'lucide-react';
 import { Card } from '../ui/Card.jsx';
 import { Button } from '../ui/Button.jsx';
 
@@ -20,8 +21,8 @@ export function ConnectGoogleCard({ onConnect }) {
   };
   return (
     <Card className="max-w-xl mx-auto text-center">
-      <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-nexus-primary to-nexus-secondary grid place-items-center text-white text-2xl font-display font-bold">
-        📅
+      <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-nexus-primary to-nexus-secondary grid place-items-center text-on-accent signal-glow">
+        <CalendarDays size={28} />
       </div>
       <h2 className="font-display text-xl font-semibold text-text-primary mb-2">
         Connect Google Calendar

@@ -2,13 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChatStore } from '../store/useChatStore.js';
 import { useStreamingChat } from '../hooks/useStreamingChat.js';
+import { ArrowUp } from 'lucide-react';
 import { ChatBubble } from '../components/shared/ChatBubble.jsx';
 import { VoiceButton } from '../components/shared/VoiceButton.jsx';
-import { Button } from '../components/ui/Button.jsx';
+import { NeuralField } from '../components/shared/NeuralField.jsx';
 import { Card, CardTitle } from '../components/ui/Card.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 import { Input } from '../components/ui/Input.jsx';
 import { formatRelative } from '../lib/utils.js';
+
+const SUGGESTIONS = [
+  'Save a note about my Comp Finance midterm next Thursday',
+  'Remind me to email Prof Rao tomorrow at 9am',
+  'What did I decide about the API design?',
+  'Add a high-priority task to tighten the lit review'
+];
 
 export default function Chat() {
   const { messages, isStreaming, memory, toolResults, resetSession } = useChatStore();
@@ -43,15 +51,28 @@ export default function Chat() {
       <section className="flex-1 flex flex-col min-w-0">
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-4">
           {messages.length === 0 ? (
-            <div className="h-full grid place-items-center">
-              <div className="text-center max-w-md">
-                <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-nexus-primary to-nexus-secondary grid place-items-center text-white font-display font-bold text-lg">
+            <div className="relative h-full grid place-items-center overflow-hidden">
+              <div aria-hidden className="pointer-events-none absolute inset-0 opacity-70">
+                <NeuralField />
+                <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 55% 50% at 50% 48%, transparent 26%, var(--color-surface-base) 76%)' }} />
+              </div>
+              <div className="relative text-center max-w-xl px-6">
+                <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-nexus-primary to-nexus-secondary grid place-items-center text-on-accent font-display font-bold text-xl signal-glow">
                   N
                 </div>
-                <h2 className="font-display text-xl font-semibold mb-2">How can I help, Rama?</h2>
-                <p className="text-sm text-text-secondary">
-                  Try: <em>"Save a note about my Comp Finance midterm next Thursday."</em>
-                </p>
+                <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-3">How can I help, Rama?</h2>
+                <p className="text-text-secondary mb-8">Capture a thought, plan your day, or ask what you told me before — I'll route it to the right place.</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {SUGGESTIONS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setDraft(s)}
+                      className="text-sm text-text-secondary hover:text-text-primary border border-surface-border hover:border-nexus-primary/50 rounded-full px-3.5 py-2 bg-surface-2/70 backdrop-blur transition-colors"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (
@@ -71,27 +92,31 @@ export default function Chat() {
         </div>
 
         {/* Composer */}
-        <div className="border-t border-surface-border bg-surface-base px-4 md:px-8 py-4">
-          <div className="flex items-end gap-2 max-w-3xl mx-auto">
-            <Input
-              as="textarea"
-              rows={1}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="Ask, capture, plan… (Shift+Enter for newline)"
-              className="max-h-40"
-            />
-            <VoiceButton onTranscript={(t) => setDraft((prev) => (prev ? prev + ' ' + t : t))} />
-            <Button onClick={handleSend} disabled={isStreaming || !draft.trim()}>
-              {isStreaming ? '…' : 'Send'}
-            </Button>
-          </div>
-          <div className="mt-2 flex items-center justify-between max-w-3xl mx-auto text-[11px] text-text-muted">
-            <span>Powered by Gemini 2.0 Flash · Semantic memory via pgvector</span>
-            <button onClick={resetSession} className="hover:text-text-secondary">
-              New session
-            </button>
+        <div className="px-4 md:px-8 pb-5 pt-2">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-end gap-2 rounded-2xl border border-surface-border bg-surface-2 p-2 pl-4 shadow-[0_18px_40px_-28px_rgba(0,0,0,0.8)] focus-within:border-nexus-primary/40 transition-colors">
+              <textarea
+                rows={1}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder="Ask, capture, plan…  (Shift+Enter for newline)"
+                className="flex-1 resize-none bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none py-2 max-h-40"
+              />
+              <VoiceButton onTranscript={(t) => setDraft((prev) => (prev ? prev + ' ' + t : t))} />
+              <button
+                onClick={handleSend}
+                disabled={isStreaming || !draft.trim()}
+                aria-label="Send message"
+                className="w-10 h-10 rounded-xl grid place-items-center bg-nexus-primary text-on-accent hover:bg-nexus-primary-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ArrowUp size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-text-muted px-1">
+              <span>Gemini · Semantic memory via pgvector</span>
+              <button onClick={resetSession} className="hover:text-text-secondary">New session</button>
+            </div>
           </div>
         </div>
       </section>

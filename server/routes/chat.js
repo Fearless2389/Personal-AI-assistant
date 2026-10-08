@@ -6,6 +6,7 @@ import { embedAndStore, retrieveMemory, buildSystemPrompt } from '../services/me
 import * as calendarService from '../services/calendarService.js';
 import { scheduleReminder } from '../services/reminderService.js';
 import { logHabitByName, listHabitsWithToday } from '../services/habitService.js';
+import { DEFAULT_TZ, formatInTz } from '../services/time.js';
 
 const router = Router();
 
@@ -178,9 +179,10 @@ router.post('/', requireAuth, async (req, res) => {
     // 4) Load persona + Google connection state from user_settings (defaults if missing)
     const { data: settings } = await supabaseAdmin
       .from('user_settings')
-      .select('persona_name, persona_style, google_connection_status')
+      .select('persona_name, persona_style, google_connection_status, timezone')
       .eq('id', userId)
       .maybeSingle();
+    const tz = settings?.timezone || DEFAULT_TZ;
 
     // 4b) Gather live context for the system prompt — all best-effort, all
     //     independently guarded so a single failure never breaks chat.
@@ -189,7 +191,7 @@ router.post('/', requireAuth, async (req, res) => {
       // Calendar (only if connected)
       (async () => {
         if (settings?.google_connection_status !== 'connected') return [];
-        try { return await calendarService.listTodaysEvents(userId); }
+        try { return await calendarService.listTodaysEvents(userId, tz); }
         catch (err) { console.warn(`[chat:${req.id}] events fetch failed:`, err.message); return []; }
       })(),
       // Overdue tasks
@@ -222,7 +224,7 @@ router.post('/', requireAuth, async (req, res) => {
       todaysEvents,
       overdueTasks,
       todaysHabits,
-      currentDateTime: new Date().toString()
+      currentDateTime: formatInTz(tz)
     });
 
     const model = getChatModel(systemInstruction);

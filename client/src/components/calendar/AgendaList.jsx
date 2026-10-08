@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { MapPin } from 'lucide-react';
 import { Card } from '../ui/Card.jsx';
 import { Badge } from '../ui/Badge.jsx';
 
@@ -24,7 +25,7 @@ function EventRow({ event }) {
           {event.all_day && <Badge intent="neutral">all day</Badge>}
         </div>
         {event.location && (
-          <p className="text-xs text-text-secondary truncate">📍 {event.location}</p>
+          <p className="text-xs text-text-secondary truncate flex items-center gap-1"><MapPin size={11} /> {event.location}</p>
         )}
         {event.description && (
           <p className="text-xs text-text-muted truncate mt-0.5">{event.description}</p>

@@ -1,56 +1,38 @@
-// Dashboard — the app's home screen. Powered by the morning-briefing workflow
-// (calendar + tasks → Gemini structured summary, with a deterministic fallback).
+// Dashboard — the home screen. Bento layout: AI briefing hero + right rail of
+// quick-jump and stats, with today's habits and schedule below.
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { RefreshCw, MapPin, MessageSquare, StickyNote, ListTodo, Timer, Flame, Check, ArrowUpRight } from 'lucide-react';
 import { format } from 'date-fns';
-import { dashboardApi } from '../lib/api.js';
+import { dashboardApi, habitsApi } from '../lib/api.js';
 import { Card } from '../components/ui/Card.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
-import { Button } from '../components/ui/Button.jsx';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner.jsx';
 import { PageWrapper } from '../components/layout/PageWrapper.jsx';
 
 const STAT_TILES = [
-  { key: 'overdue', label: 'Overdue', intent: 'danger', to: '/tasks?filter=overdue' },
-  { key: 'dueToday', label: 'Due today', intent: 'warning', to: '/tasks?filter=today' },
-  { key: 'inProgress', label: 'In progress', intent: 'info', to: '/tasks' },
-  { key: 'todo', label: 'To-do', intent: 'neutral', to: '/tasks' }
+  { key: 'overdue', label: 'Overdue', to: '/tasks?filter=overdue', accent: 'text-danger' },
+  { key: 'dueToday', label: 'Due today', to: '/tasks?filter=today', accent: 'text-warning' },
+  { key: 'inProgress', label: 'In progress', to: '/tasks', accent: 'text-nexus-primary' },
+  { key: 'todo', label: 'To-do', to: '/tasks', accent: 'text-text-secondary' }
 ];
 
-function StatTile({ label, value, intent, to }) {
-  const body = (
-    <Card className="text-center py-4 hover:border-nexus-primary/40 transition-colors">
-      <div className="text-2xl font-display font-semibold text-text-primary tabular-nums">{value ?? 0}</div>
-      <div className="mt-0.5 text-xs text-text-secondary">{label}</div>
-    </Card>
-  );
-  return to ? <Link to={to} className="block">{body}</Link> : body;
-}
+const QUICK = [
+  { to: '/chat', label: 'Ask Nexus', icon: MessageSquare },
+  { to: '/notes', label: 'New note', icon: StickyNote },
+  { to: '/tasks', label: 'Tasks', icon: ListTodo },
+  { to: '/focus', label: 'Focus', icon: Timer }
+];
 
 function eventTime(e) {
   if (e.all_day) return 'All day';
   try { return format(new Date(e.start_time), 'h:mm a'); } catch { return ''; }
 }
 
-function BriefingSkeleton() {
-  return (
-    <Card className="relative overflow-hidden">
-      <div className="space-y-3">
-        <LoadingSpinner variant="skeleton" className="h-6 w-48" />
-        <LoadingSpinner variant="skeleton" className="h-4 w-72 max-w-full" />
-        <div className="pt-2 space-y-2">
-          <LoadingSpinner variant="skeleton" className="h-4 w-full" />
-          <LoadingSpinner variant="skeleton" className="h-4 w-5/6" />
-          <LoadingSpinner variant="skeleton" className="h-4 w-4/6" />
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 export default function Dashboard() {
   const [data, setData] = useState(null);
+  const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -59,17 +41,46 @@ export default function Dashboard() {
     refresh ? setRefreshing(true) : setLoading(true);
     setError(null);
     try {
-      const payload = await dashboardApi.get({ refresh });
+      const [payload, h] = await Promise.all([
+        dashboardApi.get({ refresh }),
+        habitsApi.list().catch(() => ({ habits: [] }))
+      ]);
       setData(payload);
+      setHabits(h.habits ?? []);
     } catch (err) {
       setError(err.message ?? 'Could not load your dashboard.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setLoading(false); setRefreshing(false);
     }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const toggleHabit = async (habit) => {
+    const wasDone = habit.done_today;
+    setHabits((hs) => hs.map((h) => (h.id === habit.id ? { ...h, done_today: !wasDone } : h)));
+    try {
+      const res = wasDone ? await habitsApi.uncheckin(habit.id) : await habitsApi.checkin(habit.id);
+      setHabits((hs) => hs.map((h) => (h.id === habit.id ? { ...h, done_today: !wasDone, current_streak: res.streak } : h)));
+    } catch {
+      setHabits((hs) => hs.map((h) => (h.id === habit.id ? { ...h, done_today: wasDone } : h)));
+    }
+  };
+
+  if (loading) {
+    return <PageWrapper><Card><div className="grid place-items-center py-24"><LoadingSpinner /></div></Card></PageWrapper>;
+  }
+  if (error) {
+    return (
+      <PageWrapper>
+        <Card className="border-danger/40">
+          <p className="text-sm text-text-primary">Couldn't load your dashboard</p>
+          <p className="text-xs text-text-secondary mt-1">{error}</p>
+          <button onClick={() => load()} className="mt-3 text-sm text-nexus-primary hover:underline">Retry</button>
+        </Card>
+      </PageWrapper>
+    );
+  }
 
   const briefing = data?.briefing;
   const stats = data?.stats ?? {};
@@ -77,122 +88,121 @@ export default function Dashboard() {
 
   return (
     <PageWrapper>
-      {/* Hero briefing */}
-      {loading && <BriefingSkeleton />}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+        className="grid grid-cols-1 lg:grid-cols-12 gap-4 auto-rows-min">
 
-      {!loading && error && (
-        <Card className="border-danger/40 bg-danger/10 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-text-primary">Couldn't load your dashboard</p>
-            <p className="text-xs text-text-secondary mt-0.5">{error}</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => load()}>Retry</Button>
-        </Card>
-      )}
-
-      {!loading && !error && briefing && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-        >
-          <Card className="relative overflow-hidden">
-            {/* time-aware accent bar */}
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-nexus-primary to-nexus-secondary" />
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="font-display text-xl md:text-2xl font-semibold text-text-primary">
-                  {briefing.greeting}
-                </h1>
-                <p className="text-sm text-text-secondary mt-1">{briefing.headline}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {data.generated && <Badge intent="primary">AI briefing</Badge>}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => load({ refresh: true })}
-                  disabled={refreshing}
-                  aria-label="Refresh briefing"
-                >
-                  {refreshing ? <LoadingSpinner /> : '↻'}
-                </Button>
-              </div>
+        {/* Briefing hero */}
+        <Card className="lg:col-span-8 overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-nexus-primary via-nexus-secondary to-transparent" />
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-text-primary">{briefing?.greeting}</h1>
+              <p className="text-sm text-text-secondary mt-1.5 max-w-2xl">{briefing?.headline}</p>
             </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {data?.generated && <Badge intent="primary">AI</Badge>}
+              <button onClick={() => load({ refresh: true })} disabled={refreshing}
+                className="w-8 h-8 grid place-items-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-3 transition-colors" aria-label="Refresh briefing">
+                {refreshing ? <LoadingSpinner /> : <RefreshCw size={15} />}
+              </button>
+            </div>
+          </div>
 
-            {briefing.priorities?.length > 0 && (
-              <div className="mt-5">
-                <p className="text-xs uppercase tracking-wider text-text-muted mb-2">Today's focus</p>
-                <ol className="space-y-2">
-                  {briefing.priorities.map((p, i) => (
-                    <li key={i} className="flex gap-3">
-                      <span className="shrink-0 w-6 h-6 rounded-full bg-surface-3 border border-surface-border grid place-items-center text-xs text-text-secondary font-mono">
-                        {i + 1}
-                      </span>
-                      <span className="min-w-0 pt-0.5">
-                        <span className="text-sm text-text-primary font-medium">{p.title}</span>
-                        {p.reason && <span className="text-sm text-text-secondary"> — {p.reason}</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            )}
+          {briefing?.priorities?.length > 0 && (
+            <div className="mt-6">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-text-muted mb-3">Today's focus</p>
+              <ol className="space-y-3">
+                {briefing.priorities.map((p, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="shrink-0 w-6 h-6 rounded-full bg-nexus-primary/12 text-nexus-primary border border-nexus-primary/25 grid place-items-center text-xs font-semibold tabular-nums">{i + 1}</span>
+                    <span className="pt-0.5"><span className="text-sm text-text-primary font-medium">{p.title}</span>{p.reason && <span className="text-sm text-text-secondary"> — {p.reason}</span>}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
 
-            {briefing.nudge && (
-              <p className="mt-5 text-sm text-text-secondary border-l-2 border-nexus-primary/50 pl-3">
-                {briefing.nudge}
-              </p>
-            )}
+          {briefing?.nudge && <p className="mt-6 text-sm text-text-secondary border-l-2 border-nexus-primary/60 pl-3">{briefing.nudge}</p>}
 
-            <div className="mt-5">
-              <Link to="/chat">
-                <Button size="sm" variant="primary">Plan in chat →</Button>
-              </Link>
+          <Link to="/chat" className="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-nexus-primary text-on-accent font-semibold text-sm px-4 py-2.5 hover:bg-nexus-primary-hover transition-colors">
+            Plan in chat <ArrowUpRight size={16} />
+          </Link>
+        </Card>
+
+        {/* Right rail: quick jump + stats */}
+        <div className="lg:col-span-4 grid grid-cols-1 gap-4 auto-rows-min">
+          <Card>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-text-muted mb-3">Jump back in</p>
+            <div className="grid grid-cols-2 gap-2">
+              {QUICK.map(({ to, label, icon: Icon }) => (
+                <Link key={to} to={to} className="group flex items-center gap-2.5 rounded-xl border border-surface-border bg-surface-3/40 px-3 py-2.5 hover:border-nexus-primary/40 hover:bg-surface-3 transition-all">
+                  <Icon size={16} className="text-nexus-primary" />
+                  <span className="text-sm text-text-secondary group-hover:text-text-primary">{label}</span>
+                </Link>
+              ))}
             </div>
           </Card>
-        </motion.div>
-      )}
 
-      {/* Stat tiles */}
-      {!loading && !error && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-          {STAT_TILES.map(t => (
-            <StatTile key={t.key} label={t.label} value={stats[t.key]} intent={t.intent} to={t.to} />
-          ))}
+          <div className="grid grid-cols-2 gap-3">
+            {STAT_TILES.map((t) => (
+              <Link key={t.key} to={t.to}>
+                <Card padded={false} className="py-4 text-center hover:border-nexus-primary/40 transition-colors">
+                  <div className={`text-2xl font-display font-bold tabular-nums ${t.accent}`}>{stats[t.key] ?? 0}</div>
+                  <div className="text-xs text-text-secondary mt-0.5">{t.label}</div>
+                </Card>
+              </Link>
+            ))}
+          </div>
         </div>
-      )}
 
-      {/* Today's schedule */}
-      {!loading && !error && (
-        <Card className="mt-4">
+        {/* Today's habits */}
+        <Card className="lg:col-span-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display text-base font-semibold text-text-primary">Today's habits</h2>
+            <Link to="/habits" className="text-xs text-nexus-primary hover:underline">All →</Link>
+          </div>
+          {habits.length === 0 ? (
+            <p className="text-sm text-text-secondary">No habits yet. <Link to="/habits" className="text-nexus-primary hover:underline">Add one</Link>.</p>
+          ) : (
+            <ul className="space-y-1">
+              {habits.slice(0, 5).map((h) => (
+                <li key={h.id} className="flex items-center gap-3 py-1.5">
+                  <button onClick={() => toggleHabit(h)}
+                    className={`shrink-0 w-6 h-6 rounded-full border grid place-items-center transition-colors ${h.done_today ? 'bg-nexus-primary border-nexus-primary text-on-accent' : 'border-surface-border text-text-muted hover:border-nexus-primary/60'}`}
+                    aria-label={h.done_today ? `Undo ${h.name}` : `Complete ${h.name}`}>
+                    {h.done_today ? <Check size={13} strokeWidth={3} /> : null}
+                  </button>
+                  <span className={`flex-1 text-sm ${h.done_today ? 'text-text-muted line-through' : 'text-text-primary'}`}>{h.name}</span>
+                  <span className="inline-flex items-center gap-1 text-xs text-text-secondary tabular-nums"><Flame size={13} className={h.current_streak > 0 ? 'text-warning' : 'text-text-muted'} /> {h.current_streak ?? 0}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        {/* Today's schedule */}
+        <Card className="lg:col-span-7">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-display text-base font-semibold text-text-primary">Today's schedule</h2>
             <Link to="/calendar" className="text-xs text-nexus-primary hover:underline">Calendar →</Link>
           </div>
           {events.length === 0 ? (
-            <p className="text-sm text-text-secondary">
-              Nothing scheduled today.{' '}
-              <Link to="/calendar" className="text-nexus-primary hover:underline">
-                Connect Google Calendar
-              </Link>{' '}
-              to see your events here.
-            </p>
+            <p className="text-sm text-text-secondary">Nothing scheduled today. <Link to="/calendar" className="text-nexus-primary hover:underline">Connect Google Calendar</Link> to see your events.</p>
           ) : (
             <ul className="divide-y divide-surface-border">
-              {events.map(e => (
+              {events.map((e) => (
                 <li key={e.google_event_id} className="flex gap-3 py-2">
                   <span className="shrink-0 w-20 text-xs font-mono text-text-secondary pt-0.5">{eventTime(e)}</span>
                   <span className="min-w-0">
-                    <span className="text-sm text-text-primary truncate block">{e.title}</span>
-                    {e.location && <span className="text-xs text-text-muted truncate block">📍 {e.location}</span>}
+                    <span className="text-sm text-text-primary block truncate">{e.title}</span>
+                    {e.location && <span className="text-xs text-text-muted truncate flex items-center gap-1"><MapPin size={11} /> {e.location}</span>}
                   </span>
                 </li>
               ))}
             </ul>
           )}
         </Card>
-      )}
+      </motion.div>
     </PageWrapper>
   );
 }

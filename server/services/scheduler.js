@@ -4,6 +4,9 @@
 //  has a bull_job_id column for that migration.)
 import { supabaseAdmin } from './supabase.js';
 import { sendSms, isSmsConfigured } from './sms.js';
+import { runMorningBriefing } from './workflows/morningBriefing.js';
+import { deliverBriefing } from './briefingDelivery.js';
+import { hourInTz, localDateKey, DEFAULT_TZ } from './time.js';
 
 const POLL_MS = 30_000;
 const MAX_ATTEMPTS = 3;
@@ -51,9 +54,52 @@ async function tick() {
   }
 }
 
+// ── Daily morning briefing ───────────────────────────────────────────────────
+// Once per user per local day, at their chosen hour, generate the briefing and
+// push it over their configured channel. Runs on the same poll as SMS; the
+// hour-match + last_briefing_on guard make it fire at most once a day.
+async function briefingTick() {
+  const { data: users, error } = await supabaseAdmin
+    .from('user_settings')
+    .select('id, timezone, briefing_hour, last_briefing_on, phone_number, whatsapp_number, sms_opt_in, whatsapp_opt_in')
+    .eq('briefing_enabled', true);
+  if (error) { console.error('[briefing] query failed:', error.message); return; }
+
+  for (const s of users ?? []) {
+    const tz = s.timezone || DEFAULT_TZ;
+    if (hourInTz(tz) !== (s.briefing_hour ?? 8)) continue;
+    const today = localDateKey(tz);
+    if (s.last_briefing_on === today) continue;
+
+    // Claim today's slot atomically so overlapping ticks can't double-send.
+    const { data: claimed } = await supabaseAdmin
+      .from('user_settings')
+      .update({ last_briefing_on: today })
+      .eq('id', s.id)
+      .or(`last_briefing_on.is.null,last_briefing_on.neq.${today}`)
+      .select('id')
+      .maybeSingle();
+    if (!claimed) continue;
+
+    try {
+      const { data: userRec } = await supabaseAdmin.auth.admin.getUserById(s.id);
+      const payload = await runMorningBriefing(s.id, {
+        email: userRec?.user?.email ?? null, tz, force: true
+      });
+      const { delivered, channel } = await deliverBriefing(s.id, payload, s);
+      console.log(`[briefing] ${s.id}: ${delivered ? `sent via ${channel}` : 'generated (no channel)'}`);
+    } catch (err) {
+      console.error(`[briefing] failed for ${s.id}:`, err.message);
+    }
+  }
+}
+
 export function startScheduler() {
   if (timer) return;
-  timer = setInterval(() => { tick().catch(e => console.error('[scheduler]', e.message)); }, POLL_MS);
+  timer = setInterval(() => {
+    tick().catch(e => console.error('[scheduler]', e.message));
+    briefingTick().catch(e => console.error('[briefing]', e.message));
+  }, POLL_MS);
   timer.unref?.();
   console.log(
     isSmsConfigured()

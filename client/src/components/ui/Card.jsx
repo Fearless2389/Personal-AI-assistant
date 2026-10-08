@@ -4,7 +4,8 @@ export function Card({ as: Tag = 'div', className, children, padded = true, ...p
   return (
     <Tag
       className={cn(
-        'bg-surface-2 border border-surface-border rounded-xl',
+        'relative rounded-2xl border border-surface-border bg-surface-2',
+        'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.045),0_18px_40px_-28px_rgba(0,0,0,0.7)]',
         padded && 'p-5',
         className
       )}

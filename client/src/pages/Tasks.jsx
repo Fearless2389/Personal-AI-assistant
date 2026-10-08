@@ -7,6 +7,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
+import { Plus } from 'lucide-react';
 import { tasksApi } from '../lib/api.js';
 import { useTasksStore, TASK_COLUMNS } from '../store/useTasksStore.js';
 import { Button } from '../components/ui/Button.jsx';
@@ -128,7 +129,7 @@ export default function Tasks() {
             </Button>
           ))}
         </div>
-        <Button onClick={() => setOpenNew(true)}>+ New task</Button>
+        <Button onClick={() => setOpenNew(true)}><Plus size={15} /> New task</Button>
       </div>
 
       {loading && <LoadingSpinner variant="bar" className="mb-4" />}

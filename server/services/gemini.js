@@ -123,7 +123,7 @@ export async function getEmbedding(text) {
 
 export function getChatModel(systemInstruction) {
   return genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-flash-latest',
     systemInstruction,
     tools
   });
@@ -137,7 +137,7 @@ export function getChatModel(systemInstruction) {
  */
 export function getStructuredModel(systemInstruction, responseSchema) {
   return genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-flash-latest',
     systemInstruction,
     generationConfig: {
       responseMimeType: 'application/json',

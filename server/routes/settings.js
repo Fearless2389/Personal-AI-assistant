@@ -9,12 +9,14 @@ router.use(requireAuth);
 
 const SAFE_COLUMNS =
   'persona_name, persona_style, focus_areas, phone_number, whatsapp_number, ' +
-  'sms_opt_in, whatsapp_opt_in, wake_up_time, google_connection_status, last_connected_at';
+  'sms_opt_in, whatsapp_opt_in, wake_up_time, google_connection_status, last_connected_at, ' +
+  'timezone, briefing_enabled, briefing_hour, last_briefing_on';
 
-// Fields the client is allowed to change (tokens/status are managed elsewhere).
+// Fields the client is allowed to change (tokens/status/last_briefing_on are managed elsewhere).
 const EDITABLE = new Set([
   'persona_name', 'persona_style', 'focus_areas',
-  'phone_number', 'whatsapp_number', 'sms_opt_in', 'whatsapp_opt_in', 'wake_up_time'
+  'phone_number', 'whatsapp_number', 'sms_opt_in', 'whatsapp_opt_in', 'wake_up_time',
+  'timezone', 'briefing_enabled', 'briefing_hour'
 ]);
 
 // GET /api/settings — ensures a row exists, returns non-sensitive fields

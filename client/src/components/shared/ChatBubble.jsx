@@ -11,7 +11,7 @@ export function ChatBubble({ role, content, isStreaming }) {
         className={cn(
           'max-w-[85%] md:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap',
           isUser
-            ? 'bg-nexus-primary text-white rounded-br-sm'
+            ? 'bg-nexus-primary text-on-accent rounded-br-sm'
             : 'bg-surface-3 text-text-primary border border-surface-border rounded-bl-sm',
           showCaret && 'blinking-caret'
         )}

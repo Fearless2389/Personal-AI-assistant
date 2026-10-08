@@ -25,6 +25,10 @@ async function request(path, { method = 'GET', body, query, headers: extraHeader
   const res = await fetch(url, {
     method,
     headers,
+    // Send/receive the OAuth state cookie our server sets on /calendar/connect.
+    // localhost:5173 → localhost:3001 is same-site (cross-origin), so without this
+    // the browser silently drops the Set-Cookie and the OAuth callback loses state.
+    credentials: 'include',
     body: body !== undefined ? JSON.stringify(body) : undefined
   });
   if (res.status === 204) return null;

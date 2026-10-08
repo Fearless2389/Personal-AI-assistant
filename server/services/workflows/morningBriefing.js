@@ -13,6 +13,7 @@
 import { supabaseAdmin } from '../supabase.js';
 import { getStructuredModel } from '../gemini.js';
 import * as calendarService from '../calendarService.js';
+import { DEFAULT_TZ, dayRangeUtc, hourInTz, formatInTz } from '../time.js';
 
 // Strict JSON contract the model must return. Same OBJECT/STRING/ARRAY vocabulary
 // as the tool declarations in gemini.js.
@@ -42,10 +43,9 @@ const BRIEFING_SCHEMA = {
 const TTL_MS = 30 * 60_000;
 const cache = new Map(); // userId -> { at: number, payload }
 
-function partOfDay(d = new Date()) {
-  const h = d.getHours();
-  if (h < 12) return 'morning';
-  if (h < 17) return 'afternoon';
+function partOfDay(hour) {
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
   return 'evening';
 }
 
@@ -59,9 +59,9 @@ function firstNameFromEmail(email) {
  * Pull everything the briefing reasons over. Calendar is best-effort — if the
  * user hasn't connected Google (or it's broken/rate-limited) we just get [].
  */
-async function gather(userId, email) {
+async function gather(userId, email, tz = DEFAULT_TZ) {
   const now = new Date();
-  const endToday = new Date(now); endToday.setHours(23, 59, 59, 999);
+  const { end: endToday } = dayRangeUtc(tz, now); // user-local end-of-day, as a UTC instant
 
   const { data: openTasks } = await supabaseAdmin
     .from('tasks')
@@ -72,7 +72,7 @@ async function gather(userId, email) {
 
   let events = [];
   try {
-    events = await calendarService.listTodaysEvents(userId);
+    events = await calendarService.listTodaysEvents(userId, tz);
   } catch {
     events = [];
   }
@@ -87,8 +87,9 @@ async function gather(userId, email) {
 
   return {
     now,
+    tz,
     userName: firstNameFromEmail(email),
-    part: partOfDay(now),
+    part: partOfDay(hourInTz(tz, now)),
     events,
     tasks,
     overdue,
@@ -106,8 +107,11 @@ async function gather(userId, email) {
 /** Compact, model-friendly rendering of the gathered context. */
 function renderContext(ctx) {
   const fmtTime = (iso) => {
-    try { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
-    catch { return ''; }
+    try {
+      return new Date(iso).toLocaleTimeString('en-US', {
+        timeZone: ctx.tz, hour: 'numeric', minute: '2-digit'
+      });
+    } catch { return ''; }
   };
   const events = ctx.events.length
     ? ctx.events.map(e => `- ${e.all_day ? 'All day' : fmtTime(e.start_time)}: ${e.title}`).join('\n')
@@ -120,7 +124,7 @@ function renderContext(ctx) {
     : '(none)';
 
   return `Time of day: ${ctx.part}
-Date: ${ctx.now.toDateString()}
+Date: ${formatInTz(ctx.tz, ctx.now)}
 
 CALENDAR TODAY:
 ${events}
@@ -159,13 +163,24 @@ function fallbackBriefing(ctx) {
  * Run the workflow. Returns { briefing, generated, stats, events, generatedAt }.
  * `generated` is false when we served the deterministic fallback.
  */
-export async function runMorningBriefing(userId, { email, force = false } = {}) {
+export async function runMorningBriefing(userId, { email, tz, force = false } = {}) {
   if (!force) {
     const hit = cache.get(userId);
     if (hit && Date.now() - hit.at < TTL_MS) return hit.payload;
   }
 
-  const ctx = await gather(userId, email);
+  // Resolve the user's timezone if the caller didn't supply it.
+  let resolvedTz = tz;
+  if (!resolvedTz) {
+    const { data: s } = await supabaseAdmin
+      .from('user_settings')
+      .select('timezone')
+      .eq('id', userId)
+      .maybeSingle();
+    resolvedTz = s?.timezone || DEFAULT_TZ;
+  }
+
+  const ctx = await gather(userId, email, resolvedTz);
 
   let briefing;
   let generated = false;

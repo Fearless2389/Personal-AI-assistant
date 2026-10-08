@@ -2,10 +2,10 @@ import { forwardRef } from 'react';
 import { cn } from '../../lib/utils.js';
 
 const VARIANTS = {
-  primary: 'bg-nexus-primary text-white hover:bg-nexus-primary-hover',
+  primary: 'bg-nexus-primary text-on-accent font-semibold hover:bg-nexus-primary-hover',
   secondary: 'bg-surface-3 text-text-primary hover:bg-surface-border',
   ghost: 'bg-transparent text-text-secondary hover:bg-surface-2 hover:text-text-primary',
-  outline: 'border border-surface-border text-text-primary hover:bg-surface-2',
+  outline: 'border border-surface-border text-text-primary hover:bg-surface-2 hover:border-nexus-primary/40',
   danger: 'bg-danger text-white hover:opacity-90'
 };
 

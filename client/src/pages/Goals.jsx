@@ -1,6 +1,7 @@
 // Goals + milestones. Progress derives from milestone completion. Real (Phase 3).
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { X, Check, Plus } from 'lucide-react';
 import { goalsApi } from '../lib/api.js';
 import { useGoalsStore } from '../store/useGoalsStore.js';
 import { Card } from '../components/ui/Card.jsx';
@@ -50,7 +51,7 @@ function GoalCard({ goal, onToggleMilestone, onAddMilestone, onDelete }) {
             <p className="text-xs text-text-muted mt-0.5">Target: {formatDate(goal.target_date, 'MMM d, yyyy')}</p>
           )}
         </div>
-        <button onClick={() => onDelete(goal)} className="text-text-muted hover:text-danger text-sm shrink-0" aria-label="Delete goal">✕</button>
+        <button onClick={() => onDelete(goal)} className="text-text-muted hover:text-danger transition-colors shrink-0" aria-label="Delete goal"><X size={15} /></button>
       </div>
 
       <div className="mt-3 flex items-center gap-3">
@@ -65,12 +66,12 @@ function GoalCard({ goal, onToggleMilestone, onAddMilestone, onDelete }) {
               <button
                 onClick={() => onToggleMilestone(goal, m)}
                 className={[
-                  'shrink-0 w-5 h-5 rounded border grid place-items-center text-xs transition-colors',
+                  'shrink-0 w-5 h-5 rounded border grid place-items-center transition-colors',
                   m.completed ? 'bg-success border-success text-white' : 'border-surface-border text-text-muted hover:border-nexus-primary/60'
                 ].join(' ')}
                 aria-label={m.completed ? `Uncomplete ${m.title}` : `Complete ${m.title}`}
               >
-                {m.completed ? '✓' : ''}
+                {m.completed ? <Check size={12} strokeWidth={3} /> : null}
               </button>
               <span className={['text-sm', m.completed ? 'text-text-muted line-through' : 'text-text-primary'].join(' ')}>
                 {m.title}
@@ -165,7 +166,7 @@ export default function Goals() {
     <PageWrapper>
       <div className="flex items-center justify-between mb-5">
         <h1 className="font-display text-2xl font-semibold text-text-primary">Goals</h1>
-        <Button size="sm" onClick={() => setModalOpen(true)}>+ New goal</Button>
+        <Button size="sm" onClick={() => setModalOpen(true)}><Plus size={15} /> New goal</Button>
       </div>
 
       {error && <div className="mb-4"><Badge intent="danger">{error}</Badge></div>}

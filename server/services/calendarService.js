@@ -6,6 +6,7 @@ import {
   getListCache, setListCache, invalidateListCache,
   getIdem, setIdem
 } from './eventCache.js';
+import { DEFAULT_TZ, dayRangeUtc } from './time.js';
 
 /** In-flight authorized client builds, deduped per user. */
 const inFlight = new Map();
@@ -204,10 +205,9 @@ export async function listEvents(userId, { timeMin, timeMax } = {}) {
  * Convenience: today 00:00 → 23:59 (server local time).
  * User-timezone-aware bucketing is deferred to a later phase.
  */
-export async function listTodaysEvents(userId) {
-  const start = new Date(); start.setHours(0, 0, 0, 0);
-  const end = new Date(start.getTime() + 24 * 3600_000 - 1);
-  return listEvents(userId, { timeMin: start.toISOString(), timeMax: end.toISOString() });
+export async function listTodaysEvents(userId, tz = DEFAULT_TZ) {
+  const { startIso, endIso } = dayRangeUtc(tz); // the user's local day, not the server's
+  return listEvents(userId, { timeMin: startIso, timeMax: endIso });
 }
 
 /**
