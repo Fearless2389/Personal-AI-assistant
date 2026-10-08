@@ -21,9 +21,7 @@ export function CardHeader({ children, className }) {
 }
 
 export function CardTitle({ children, className }) {
-  return (
-    <h3 className={cn('font-display text-base font-semibold text-text-primary', className)}>{children}</h3>
-  );
+  return <h3 className={cn('font-display text-base font-semibold text-text-primary', className)}>{children}</h3>;
 }
 
 export default Card;

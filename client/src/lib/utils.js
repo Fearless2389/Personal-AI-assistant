@@ -3,7 +3,7 @@ import { formatDistanceToNow, format, isValid, parseISO } from 'date-fns';
 export function cn(...args) {
   return args
     .flat(Infinity)
-    .filter(x => typeof x === 'string' && x.length > 0)
+    .filter((x) => typeof x === 'string' && x.length > 0)
     .join(' ');
 }
 
@@ -30,9 +30,13 @@ export function formatDate(value, pattern = 'MMM d, yyyy h:mm a') {
 
 export function priorityColor(priority) {
   switch (priority) {
-    case 'high': return 'var(--color-danger)';
-    case 'medium': return 'var(--color-warning)';
-    case 'low': return 'var(--color-success)';
-    default: return 'var(--color-text-muted)';
+    case 'high':
+      return 'var(--color-danger)';
+    case 'medium':
+      return 'var(--color-warning)';
+    case 'low':
+      return 'var(--color-success)';
+    default:
+      return 'var(--color-text-muted)';
   }
 }

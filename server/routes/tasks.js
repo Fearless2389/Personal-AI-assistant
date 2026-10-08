@@ -100,11 +100,7 @@ router.patch('/:id', async (req, res) => {
 // DELETE /api/tasks/:id
 router.delete('/:id', async (req, res) => {
   try {
-    const { error } = await supabaseAdmin
-      .from('tasks')
-      .delete()
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id);
+    const { error } = await supabaseAdmin.from('tasks').delete().eq('id', req.params.id).eq('user_id', req.user.id);
     if (error) throw error;
     res.status(204).end();
   } catch (err) {

@@ -7,89 +7,91 @@ const genAI = new GoogleGenerativeAI(apiKey ?? '');
 
 // Function/tool declarations exposed to Gemini. Phase 1 wires all six so the model
 // knows the surface area; Phase 2/3 fill in the handlers for reminders/calendar/habits.
-export const tools = [{
-  functionDeclarations: [
-    {
-      name: 'create_note',
-      description: 'Save a note or piece of information the user wants to remember.',
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          title: { type: 'STRING' },
-          content: { type: 'STRING', description: 'The note content' },
-          tags: { type: 'ARRAY', items: { type: 'STRING' } }
-        },
-        required: ['content']
+export const tools = [
+  {
+    functionDeclarations: [
+      {
+        name: 'create_note',
+        description: 'Save a note or piece of information the user wants to remember.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            title: { type: 'STRING' },
+            content: { type: 'STRING', description: 'The note content' },
+            tags: { type: 'ARRAY', items: { type: 'STRING' } }
+          },
+          required: ['content']
+        }
+      },
+      {
+        name: 'create_task',
+        description: 'Create a task or to-do item.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            title: { type: 'STRING' },
+            description: { type: 'STRING' },
+            due_date: { type: 'STRING', description: 'ISO 8601 datetime string' },
+            priority: { type: 'STRING', enum: ['high', 'medium', 'low'] },
+            project_tag: { type: 'STRING' }
+          },
+          required: ['title']
+        }
+      },
+      {
+        name: 'schedule_reminder',
+        description: 'Schedule an SMS reminder for a specific time.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            message: { type: 'STRING' },
+            scheduled_at: { type: 'STRING', description: 'ISO 8601 datetime string' },
+            linked_type: { type: 'STRING', enum: ['task', 'event', 'custom'] },
+            linked_id: { type: 'STRING' }
+          },
+          required: ['message', 'scheduled_at']
+        }
+      },
+      {
+        name: 'create_calendar_event',
+        description: 'Create a Google Calendar event.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            title: { type: 'STRING' },
+            start_time: { type: 'STRING', description: 'ISO 8601' },
+            end_time: { type: 'STRING', description: 'ISO 8601' },
+            description: { type: 'STRING' },
+            location: { type: 'STRING' }
+          },
+          required: ['title', 'start_time', 'end_time']
+        }
+      },
+      {
+        name: 'search_memory',
+        description: 'Search through past notes and conversations semantically.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            query: { type: 'STRING', description: 'Natural language search query' }
+          },
+          required: ['query']
+        }
+      },
+      {
+        name: 'log_habit',
+        description: 'Mark a habit as completed for today.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            habit_name: { type: 'STRING' }
+          },
+          required: ['habit_name']
+        }
       }
-    },
-    {
-      name: 'create_task',
-      description: 'Create a task or to-do item.',
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          title: { type: 'STRING' },
-          description: { type: 'STRING' },
-          due_date: { type: 'STRING', description: 'ISO 8601 datetime string' },
-          priority: { type: 'STRING', enum: ['high', 'medium', 'low'] },
-          project_tag: { type: 'STRING' }
-        },
-        required: ['title']
-      }
-    },
-    {
-      name: 'schedule_reminder',
-      description: 'Schedule an SMS reminder for a specific time.',
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          message: { type: 'STRING' },
-          scheduled_at: { type: 'STRING', description: 'ISO 8601 datetime string' },
-          linked_type: { type: 'STRING', enum: ['task', 'event', 'custom'] },
-          linked_id: { type: 'STRING' }
-        },
-        required: ['message', 'scheduled_at']
-      }
-    },
-    {
-      name: 'create_calendar_event',
-      description: 'Create a Google Calendar event.',
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          title: { type: 'STRING' },
-          start_time: { type: 'STRING', description: 'ISO 8601' },
-          end_time: { type: 'STRING', description: 'ISO 8601' },
-          description: { type: 'STRING' },
-          location: { type: 'STRING' }
-        },
-        required: ['title', 'start_time', 'end_time']
-      }
-    },
-    {
-      name: 'search_memory',
-      description: 'Search through past notes and conversations semantically.',
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          query: { type: 'STRING', description: 'Natural language search query' }
-        },
-        required: ['query']
-      }
-    },
-    {
-      name: 'log_habit',
-      description: 'Mark a habit as completed for today.',
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          habit_name: { type: 'STRING' }
-        },
-        required: ['habit_name']
-      }
-    }
-  ]
-}];
+    ]
+  }
+];
 
 // Embeddings via the REST API (fetch) so `outputDimensionality` is honored regardless
 // of SDK version. gemini-embedding-001 defaults to 3072 dims; we pin 768 to match the

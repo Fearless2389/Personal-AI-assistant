@@ -65,8 +65,7 @@ function randomIdempotencyKey() {
 }
 
 export const dashboardApi = {
-  get: ({ refresh = false } = {}) =>
-    request('/api/dashboard', { query: refresh ? { refresh: 1 } : undefined })
+  get: ({ refresh = false } = {}) => request('/api/dashboard', { query: refresh ? { refresh: 1 } : undefined })
 };
 
 export const habitsApi = {
@@ -84,7 +83,8 @@ export const goalsApi = {
   update: (id, patch) => request(`/api/goals/${id}`, { method: 'PATCH', body: patch }),
   remove: (id) => request(`/api/goals/${id}`, { method: 'DELETE' }),
   addMilestone: (goalId, payload) => request(`/api/goals/${goalId}/milestones`, { method: 'POST', body: payload }),
-  updateMilestone: (goalId, id, patch) => request(`/api/goals/${goalId}/milestones/${id}`, { method: 'PATCH', body: patch }),
+  updateMilestone: (goalId, id, patch) =>
+    request(`/api/goals/${goalId}/milestones/${id}`, { method: 'PATCH', body: patch }),
   removeMilestone: (goalId, id) => request(`/api/goals/${goalId}/milestones/${id}`, { method: 'DELETE' })
 };
 
@@ -118,13 +118,13 @@ export const calendarApi = {
   status: () => request('/api/calendar/status'),
   beginConnect: () => request('/api/calendar/connect'),
   disconnect: () => request('/api/calendar/disconnect', { method: 'POST' }),
-  list: ({ timeMin, timeMax } = {}) =>
-    request('/api/calendar/events', { query: { timeMin, timeMax } }),
-  create: (payload) => request('/api/calendar/events', {
-    method: 'POST',
-    body: payload,
-    headers: { 'X-Idempotency-Key': randomIdempotencyKey() }
-  })
+  list: ({ timeMin, timeMax } = {}) => request('/api/calendar/events', { query: { timeMin, timeMax } }),
+  create: (payload) =>
+    request('/api/calendar/events', {
+      method: 'POST',
+      body: payload,
+      headers: { 'X-Idempotency-Key': randomIdempotencyKey() }
+    })
 };
 
 /**
@@ -139,9 +139,7 @@ export const calendarApi = {
  */
 export function streamChat({ message, sessionId, onChunk, signal }) {
   const controller = new AbortController();
-  const composedSignal = signal
-    ? composeSignals(signal, controller.signal)
-    : controller.signal;
+  const composedSignal = signal ? composeSignals(signal, controller.signal) : controller.signal;
 
   const promise = (async () => {
     const headers = await authHeaders();

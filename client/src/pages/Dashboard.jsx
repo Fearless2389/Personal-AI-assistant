@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { RefreshCw, MapPin, MessageSquare, StickyNote, ListTodo, Timer, Flame, Check, ArrowUpRight } from 'lucide-react';
+import {
+  RefreshCw,
+  MapPin,
+  MessageSquare,
+  StickyNote,
+  ListTodo,
+  Timer,
+  Flame,
+  Check,
+  ArrowUpRight
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { dashboardApi, habitsApi } from '../lib/api.js';
 import { Card } from '../components/ui/Card.jsx';
@@ -27,7 +37,11 @@ const QUICK = [
 
 function eventTime(e) {
   if (e.all_day) return 'All day';
-  try { return format(new Date(e.start_time), 'h:mm a'); } catch { return ''; }
+  try {
+    return format(new Date(e.start_time), 'h:mm a');
+  } catch {
+    return '';
+  }
 }
 
 export default function Dashboard() {
@@ -50,25 +64,38 @@ export default function Dashboard() {
     } catch (err) {
       setError(err.message ?? 'Could not load your dashboard.');
     } finally {
-      setLoading(false); setRefreshing(false);
+      setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const toggleHabit = async (habit) => {
     const wasDone = habit.done_today;
     setHabits((hs) => hs.map((h) => (h.id === habit.id ? { ...h, done_today: !wasDone } : h)));
     try {
       const res = wasDone ? await habitsApi.uncheckin(habit.id) : await habitsApi.checkin(habit.id);
-      setHabits((hs) => hs.map((h) => (h.id === habit.id ? { ...h, done_today: !wasDone, current_streak: res.streak } : h)));
+      setHabits((hs) =>
+        hs.map((h) => (h.id === habit.id ? { ...h, done_today: !wasDone, current_streak: res.streak } : h))
+      );
     } catch {
       setHabits((hs) => hs.map((h) => (h.id === habit.id ? { ...h, done_today: wasDone } : h)));
     }
   };
 
   if (loading) {
-    return <PageWrapper><Card><div className="grid place-items-center py-24"><LoadingSpinner /></div></Card></PageWrapper>;
+    return (
+      <PageWrapper>
+        <Card>
+          <div className="grid place-items-center py-24">
+            <LoadingSpinner />
+          </div>
+        </Card>
+      </PageWrapper>
+    );
   }
   if (error) {
     return (
@@ -76,7 +103,9 @@ export default function Dashboard() {
         <Card className="border-danger/40">
           <p className="text-sm text-text-primary">Couldn't load your dashboard</p>
           <p className="text-xs text-text-secondary mt-1">{error}</p>
-          <button onClick={() => load()} className="mt-3 text-sm text-nexus-primary hover:underline">Retry</button>
+          <button onClick={() => load()} className="mt-3 text-sm text-nexus-primary hover:underline">
+            Retry
+          </button>
         </Card>
       </PageWrapper>
     );
@@ -88,21 +117,30 @@ export default function Dashboard() {
 
   return (
     <PageWrapper>
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-        className="grid grid-cols-1 lg:grid-cols-12 gap-4 auto-rows-min">
-
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="grid grid-cols-1 lg:grid-cols-12 gap-4 auto-rows-min"
+      >
         {/* Briefing hero */}
         <Card className="lg:col-span-8 overflow-hidden">
           <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-nexus-primary via-nexus-secondary to-transparent" />
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-text-primary">{briefing?.greeting}</h1>
+              <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-text-primary">
+                {briefing?.greeting}
+              </h1>
               <p className="text-sm text-text-secondary mt-1.5 max-w-2xl">{briefing?.headline}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {data?.generated && <Badge intent="primary">AI</Badge>}
-              <button onClick={() => load({ refresh: true })} disabled={refreshing}
-                className="w-8 h-8 grid place-items-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-3 transition-colors" aria-label="Refresh briefing">
+              <button
+                onClick={() => load({ refresh: true })}
+                disabled={refreshing}
+                className="w-8 h-8 grid place-items-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-3 transition-colors"
+                aria-label="Refresh briefing"
+              >
                 {refreshing ? <LoadingSpinner /> : <RefreshCw size={15} />}
               </button>
             </div>
@@ -114,17 +152,27 @@ export default function Dashboard() {
               <ol className="space-y-3">
                 {briefing.priorities.map((p, i) => (
                   <li key={i} className="flex gap-3">
-                    <span className="shrink-0 w-6 h-6 rounded-full bg-nexus-primary/12 text-nexus-primary border border-nexus-primary/25 grid place-items-center text-xs font-semibold tabular-nums">{i + 1}</span>
-                    <span className="pt-0.5"><span className="text-sm text-text-primary font-medium">{p.title}</span>{p.reason && <span className="text-sm text-text-secondary"> — {p.reason}</span>}</span>
+                    <span className="shrink-0 w-6 h-6 rounded-full bg-nexus-primary/12 text-nexus-primary border border-nexus-primary/25 grid place-items-center text-xs font-semibold tabular-nums">
+                      {i + 1}
+                    </span>
+                    <span className="pt-0.5">
+                      <span className="text-sm text-text-primary font-medium">{p.title}</span>
+                      {p.reason && <span className="text-sm text-text-secondary"> — {p.reason}</span>}
+                    </span>
                   </li>
                 ))}
               </ol>
             </div>
           )}
 
-          {briefing?.nudge && <p className="mt-6 text-sm text-text-secondary border-l-2 border-nexus-primary/60 pl-3">{briefing.nudge}</p>}
+          {briefing?.nudge && (
+            <p className="mt-6 text-sm text-text-secondary border-l-2 border-nexus-primary/60 pl-3">{briefing.nudge}</p>
+          )}
 
-          <Link to="/chat" className="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-nexus-primary text-on-accent font-semibold text-sm px-4 py-2.5 hover:bg-nexus-primary-hover transition-colors">
+          <Link
+            to="/chat"
+            className="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-nexus-primary text-on-accent font-semibold text-sm px-4 py-2.5 hover:bg-nexus-primary-hover transition-colors"
+          >
             Plan in chat <ArrowUpRight size={16} />
           </Link>
         </Card>
@@ -135,7 +183,11 @@ export default function Dashboard() {
             <p className="text-[11px] uppercase tracking-[0.16em] text-text-muted mb-3">Jump back in</p>
             <div className="grid grid-cols-2 gap-2">
               {QUICK.map(({ to, label, icon: Icon }) => (
-                <Link key={to} to={to} className="group flex items-center gap-2.5 rounded-xl border border-surface-border bg-surface-3/40 px-3 py-2.5 hover:border-nexus-primary/40 hover:bg-surface-3 transition-all">
+                <Link
+                  key={to}
+                  to={to}
+                  className="group flex items-center gap-2.5 rounded-xl border border-surface-border bg-surface-3/40 px-3 py-2.5 hover:border-nexus-primary/40 hover:bg-surface-3 transition-all"
+                >
                   <Icon size={16} className="text-nexus-primary" />
                   <span className="text-sm text-text-secondary group-hover:text-text-primary">{label}</span>
                 </Link>
@@ -159,21 +211,38 @@ export default function Dashboard() {
         <Card className="lg:col-span-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-display text-base font-semibold text-text-primary">Today's habits</h2>
-            <Link to="/habits" className="text-xs text-nexus-primary hover:underline">All →</Link>
+            <Link to="/habits" className="text-xs text-nexus-primary hover:underline">
+              All →
+            </Link>
           </div>
           {habits.length === 0 ? (
-            <p className="text-sm text-text-secondary">No habits yet. <Link to="/habits" className="text-nexus-primary hover:underline">Add one</Link>.</p>
+            <p className="text-sm text-text-secondary">
+              No habits yet.{' '}
+              <Link to="/habits" className="text-nexus-primary hover:underline">
+                Add one
+              </Link>
+              .
+            </p>
           ) : (
             <ul className="space-y-1">
               {habits.slice(0, 5).map((h) => (
                 <li key={h.id} className="flex items-center gap-3 py-1.5">
-                  <button onClick={() => toggleHabit(h)}
+                  <button
+                    onClick={() => toggleHabit(h)}
                     className={`shrink-0 w-6 h-6 rounded-full border grid place-items-center transition-colors ${h.done_today ? 'bg-nexus-primary border-nexus-primary text-on-accent' : 'border-surface-border text-text-muted hover:border-nexus-primary/60'}`}
-                    aria-label={h.done_today ? `Undo ${h.name}` : `Complete ${h.name}`}>
+                    aria-label={h.done_today ? `Undo ${h.name}` : `Complete ${h.name}`}
+                  >
                     {h.done_today ? <Check size={13} strokeWidth={3} /> : null}
                   </button>
-                  <span className={`flex-1 text-sm ${h.done_today ? 'text-text-muted line-through' : 'text-text-primary'}`}>{h.name}</span>
-                  <span className="inline-flex items-center gap-1 text-xs text-text-secondary tabular-nums"><Flame size={13} className={h.current_streak > 0 ? 'text-warning' : 'text-text-muted'} /> {h.current_streak ?? 0}</span>
+                  <span
+                    className={`flex-1 text-sm ${h.done_today ? 'text-text-muted line-through' : 'text-text-primary'}`}
+                  >
+                    {h.name}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs text-text-secondary tabular-nums">
+                    <Flame size={13} className={h.current_streak > 0 ? 'text-warning' : 'text-text-muted'} />{' '}
+                    {h.current_streak ?? 0}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -184,10 +253,18 @@ export default function Dashboard() {
         <Card className="lg:col-span-7">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-display text-base font-semibold text-text-primary">Today's schedule</h2>
-            <Link to="/calendar" className="text-xs text-nexus-primary hover:underline">Calendar →</Link>
+            <Link to="/calendar" className="text-xs text-nexus-primary hover:underline">
+              Calendar →
+            </Link>
           </div>
           {events.length === 0 ? (
-            <p className="text-sm text-text-secondary">Nothing scheduled today. <Link to="/calendar" className="text-nexus-primary hover:underline">Connect Google Calendar</Link> to see your events.</p>
+            <p className="text-sm text-text-secondary">
+              Nothing scheduled today.{' '}
+              <Link to="/calendar" className="text-nexus-primary hover:underline">
+                Connect Google Calendar
+              </Link>{' '}
+              to see your events.
+            </p>
           ) : (
             <ul className="divide-y divide-surface-border">
               {events.map((e) => (
@@ -195,7 +272,11 @@ export default function Dashboard() {
                   <span className="shrink-0 w-20 text-xs font-mono text-text-secondary pt-0.5">{eventTime(e)}</span>
                   <span className="min-w-0">
                     <span className="text-sm text-text-primary block truncate">{e.title}</span>
-                    {e.location && <span className="text-xs text-text-muted truncate flex items-center gap-1"><MapPin size={11} /> {e.location}</span>}
+                    {e.location && (
+                      <span className="text-xs text-text-muted truncate flex items-center gap-1">
+                        <MapPin size={11} /> {e.location}
+                      </span>
+                    )}
                   </span>
                 </li>
               ))}

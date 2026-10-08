@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  DndContext, PointerSensor, useSensor, useSensors, closestCorners
-} from '@dnd-kit/core';
-import {
-  SortableContext, useSortable, verticalListSortingStrategy, arrayMove
-} from '@dnd-kit/sortable';
+import { DndContext, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
@@ -31,15 +27,17 @@ const FILTERS = [
 
 function applyFilter(tasks, filter) {
   const now = new Date();
-  const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(now); endOfDay.setHours(23, 59, 59, 999);
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
   switch (filter) {
     case 'today':
-      return tasks.filter(t => t.due_date && new Date(t.due_date) >= startOfDay && new Date(t.due_date) <= endOfDay);
+      return tasks.filter((t) => t.due_date && new Date(t.due_date) >= startOfDay && new Date(t.due_date) <= endOfDay);
     case 'overdue':
-      return tasks.filter(t => t.due_date && new Date(t.due_date) < now && t.status !== 'done');
+      return tasks.filter((t) => t.due_date && new Date(t.due_date) < now && t.status !== 'done');
     case 'high':
-      return tasks.filter(t => t.priority === 'high');
+      return tasks.filter((t) => t.priority === 'high');
     default:
       return tasks;
   }
@@ -63,11 +61,13 @@ export default function Tasks() {
     }
   }, [setTasks, setLoading]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const filteredByColumn = useMemo(() => {
     const filtered = applyFilter(tasks, filter);
-    const cols = Object.fromEntries(TASK_COLUMNS.map(c => [c, []]));
+    const cols = Object.fromEntries(TASK_COLUMNS.map((c) => [c, []]));
     for (const t of filtered) {
       const col = TASK_COLUMNS.includes(t.status) ? t.status : 'todo';
       cols[col].push(t);
@@ -82,11 +82,11 @@ export default function Tasks() {
     if (!over) return;
     const activeId = active.id;
     const overId = over.id;
-    const activeTask = tasks.find(t => t.id === activeId);
+    const activeTask = tasks.find((t) => t.id === activeId);
     if (!activeTask) return;
 
     // Was it dropped onto a column container (over.id matches a column key) or onto a sibling?
-    let targetColumn = TASK_COLUMNS.includes(overId) ? overId : tasks.find(t => t.id === overId)?.status;
+    let targetColumn = TASK_COLUMNS.includes(overId) ? overId : tasks.find((t) => t.id === overId)?.status;
     if (!targetColumn) return;
 
     if (activeTask.status !== targetColumn) {
@@ -103,12 +103,12 @@ export default function Tasks() {
     } else if (activeId !== overId) {
       // Reorder within the same column (local-only — order not persisted in Phase 1)
       const colTasks = filteredByColumn[targetColumn];
-      const oldIndex = colTasks.findIndex(t => t.id === activeId);
-      const newIndex = colTasks.findIndex(t => t.id === overId);
+      const oldIndex = colTasks.findIndex((t) => t.id === activeId);
+      const newIndex = colTasks.findIndex((t) => t.id === overId);
       if (oldIndex !== -1 && newIndex !== -1) {
         const reordered = arrayMove(colTasks, oldIndex, newIndex);
         // Rebuild task list: keep tasks in other columns as-is, splice reordered list
-        const others = tasks.filter(t => t.status !== targetColumn);
+        const others = tasks.filter((t) => t.status !== targetColumn);
         setTasks([...others, ...reordered]);
       }
     }
@@ -118,7 +118,7 @@ export default function Tasks() {
     <PageWrapper>
       <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
         <div className="flex items-center gap-2 flex-wrap">
-          {FILTERS.map(f => (
+          {FILTERS.map((f) => (
             <Button
               key={f.id}
               size="sm"
@@ -129,35 +129,28 @@ export default function Tasks() {
             </Button>
           ))}
         </div>
-        <Button onClick={() => setOpenNew(true)}><Plus size={15} /> New task</Button>
+        <Button onClick={() => setOpenNew(true)}>
+          <Plus size={15} /> New task
+        </Button>
       </div>
 
       {loading && <LoadingSpinner variant="bar" className="mb-4" />}
 
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {TASK_COLUMNS.map(col => (
-            <KanbanColumn
-              key={col}
-              columnId={col}
-              title={COLUMN_LABELS[col]}
-              tasks={filteredByColumn[col] ?? []}
-            />
+          {TASK_COLUMNS.map((col) => (
+            <KanbanColumn key={col} columnId={col} title={COLUMN_LABELS[col]} tasks={filteredByColumn[col] ?? []} />
           ))}
         </div>
       </DndContext>
 
-      <NewTaskModal
-        open={openNew}
-        onClose={() => setOpenNew(false)}
-        onCreated={(t) => upsert(t)}
-      />
+      <NewTaskModal open={openNew} onClose={() => setOpenNew(false)} onCreated={(t) => upsert(t)} />
     </PageWrapper>
   );
 }
 
 function KanbanColumn({ columnId, title, tasks }) {
-  const ids = tasks.map(t => t.id);
+  const ids = tasks.map((t) => t.id);
   return (
     <Card padded={false} className="overflow-hidden flex flex-col">
       <div className="px-4 py-3 border-b border-surface-border flex items-center justify-between">
@@ -166,11 +159,11 @@ function KanbanColumn({ columnId, title, tasks }) {
       </div>
       <SortableContext id={columnId} items={ids} strategy={verticalListSortingStrategy}>
         <DroppableArea columnId={columnId}>
-          {tasks.length === 0 && (
-            <p className="text-xs text-text-muted text-center py-6">Drop tasks here</p>
-          )}
+          {tasks.length === 0 && <p className="text-xs text-text-muted text-center py-6">Drop tasks here</p>}
           <div className="space-y-2">
-            {tasks.map(t => <SortableTaskCard key={t.id} task={t} />)}
+            {tasks.map((t) => (
+              <SortableTaskCard key={t.id} task={t} />
+            ))}
           </div>
         </DroppableArea>
       </SortableContext>
@@ -209,9 +202,7 @@ function SortableTaskCard({ task }) {
       className="bg-surface-3 border border-surface-border rounded-lg p-3 cursor-grab active:cursor-grabbing border-l-4"
     >
       <p className="text-sm text-text-primary mb-1 line-clamp-2">{task.title}</p>
-      {task.description && (
-        <p className="text-xs text-text-secondary line-clamp-2 mb-2">{task.description}</p>
-      )}
+      {task.description && <p className="text-xs text-text-secondary line-clamp-2 mb-2">{task.description}</p>}
       <div className="flex items-center justify-between text-[11px] text-text-muted">
         <span>{task.due_date ? formatRelative(task.due_date) : 'no due date'}</span>
         {task.project_tag && <Badge intent="info">{task.project_tag}</Badge>}
@@ -229,7 +220,11 @@ function NewTaskModal({ open, onClose, onCreated }) {
   const [submitting, setSubmitting] = useState(false);
 
   const reset = () => {
-    setTitle(''); setDescription(''); setDue(''); setPriority('medium'); setProject('');
+    setTitle('');
+    setDescription('');
+    setDue('');
+    setPriority('medium');
+    setProject('');
   };
 
   const submit = async () => {
@@ -261,7 +256,9 @@ function NewTaskModal({ open, onClose, onCreated }) {
       title="New task"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
           <Button onClick={submit} disabled={!title.trim() || submitting}>
             {submitting ? 'Saving…' : 'Create'}
           </Button>
@@ -270,7 +267,12 @@ function NewTaskModal({ open, onClose, onCreated }) {
     >
       <div className="space-y-3">
         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" autoFocus />
-        <Input as="textarea" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" />
+        <Input
+          as="textarea"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Description (optional)"
+        />
         <div className="grid grid-cols-2 gap-3">
           <Input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} />
           <select

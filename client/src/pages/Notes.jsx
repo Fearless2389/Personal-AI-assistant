@@ -30,7 +30,9 @@ export default function Notes() {
     }
   }, [setNotes, setLoading, setActive, activeNoteId]);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
 
   // Debounced semantic search
   useEffect(() => {
@@ -76,12 +78,10 @@ export default function Notes() {
         {/* List */}
         <section className="space-y-3 min-w-0">
           <div className="flex items-center gap-2">
-            <Input
-              placeholder="Search notes semantically…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <Button size="md" onClick={createNew}>New</Button>
+            <Input placeholder="Search notes semantically…" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <Button size="md" onClick={createNew}>
+              New
+            </Button>
           </div>
           {loading && <LoadingSpinner variant="bar" />}
           {!loading && notes.length === 0 && (
@@ -109,16 +109,12 @@ export default function Notes() {
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="font-medium text-sm truncate text-text-primary">
-                    {n.title || 'Untitled'}
-                  </span>
+                  <span className="font-medium text-sm truncate text-text-primary">{n.title || 'Untitled'}</span>
                   {semantic && typeof n.similarity === 'number' && (
                     <Badge intent="primary">{(n.similarity * 100).toFixed(0)}%</Badge>
                   )}
                 </div>
-                <p className="text-xs text-text-secondary line-clamp-2 mb-2 whitespace-pre-wrap">
-                  {n.content || '—'}
-                </p>
+                <p className="text-xs text-text-secondary line-clamp-2 mb-2 whitespace-pre-wrap">{n.content || '—'}</p>
                 <div className="flex items-center justify-between text-[11px] text-text-muted">
                   <span>{formatRelative(n.updated_at ?? n.created_at)}</span>
                   {n.source && n.source !== 'manual' && <Badge intent="info">{n.source}</Badge>}
@@ -175,7 +171,10 @@ function Editor({ note, onSave, onDelete }) {
     const patch = {
       title: title.trim() || null,
       content,
-      tags: tags.split(',').map((t) => t.trim()).filter(Boolean)
+      tags: tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean)
     };
     await onSave(patch);
     setSavedAt(new Date().toISOString());
@@ -191,8 +190,12 @@ function Editor({ note, onSave, onDelete }) {
           onBlur={save}
           className="!bg-transparent !border-transparent text-lg font-display font-semibold focus:!bg-surface-3 focus:!border-surface-border"
         />
-        <Button variant="ghost" size="sm" onClick={save}>Save</Button>
-        <Button variant="ghost" size="sm" onClick={onDelete} className="text-danger hover:!bg-danger/15">Delete</Button>
+        <Button variant="ghost" size="sm" onClick={save}>
+          Save
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onDelete} className="text-danger hover:!bg-danger/15">
+          Delete
+        </Button>
       </div>
       <div className="p-5 space-y-3">
         <Input

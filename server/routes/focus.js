@@ -52,8 +52,11 @@ router.get('/', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const now = new Date();
-    const startToday = new Date(now); startToday.setHours(0, 0, 0, 0);
-    const startWeek = new Date(now); startWeek.setDate(now.getDate() - 6); startWeek.setHours(0, 0, 0, 0);
+    const startToday = new Date(now);
+    startToday.setHours(0, 0, 0, 0);
+    const startWeek = new Date(now);
+    startWeek.setDate(now.getDate() - 6);
+    startWeek.setHours(0, 0, 0, 0);
 
     const { data, error } = await supabaseAdmin
       .from('focus_sessions')
@@ -64,12 +67,10 @@ router.get('/stats', async (req, res) => {
 
     const rows = data ?? [];
     const todayMinutes = rows
-      .filter(r => new Date(r.started_at) >= startToday && r.completed)
+      .filter((r) => new Date(r.started_at) >= startToday && r.completed)
       .reduce((a, r) => a + (r.duration_minutes ?? 0), 0);
-    const weekMinutes = rows
-      .filter(r => r.completed)
-      .reduce((a, r) => a + (r.duration_minutes ?? 0), 0);
-    const todaySessions = rows.filter(r => new Date(r.started_at) >= startToday && r.completed).length;
+    const weekMinutes = rows.filter((r) => r.completed).reduce((a, r) => a + (r.duration_minutes ?? 0), 0);
+    const todaySessions = rows.filter((r) => new Date(r.started_at) >= startToday && r.completed).length;
 
     res.json({ todayMinutes, weekMinutes, todaySessions });
   } catch (err) {

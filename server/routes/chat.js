@@ -75,14 +75,19 @@ async function handleToolCall(name, args, userId) {
           .insert({
             user_id: userId,
             google_event_id: created.google_event_id,
-            title, description, start_time, end_time, location
+            title,
+            description,
+            start_time,
+            end_time,
+            location
           })
           .select('id')
           .single();
         if (mirrorErr) {
           console.error('[chat] calendar mirror insert failed:', mirrorErr.message);
         } else {
-          const embedText = `Calendar event: ${title} on ${start_time}` +
+          const embedText =
+            `Calendar event: ${title} on ${start_time}` +
             (location ? ` at ${location}` : '') +
             (description ? `. ${description}` : '');
           setImmediate(() => embedAndStore(userId, 'calendar_events', mirror.id, embedText));
@@ -191,8 +196,12 @@ router.post('/', requireAuth, async (req, res) => {
       // Calendar (only if connected)
       (async () => {
         if (settings?.google_connection_status !== 'connected') return [];
-        try { return await calendarService.listTodaysEvents(userId, tz); }
-        catch (err) { console.warn(`[chat:${req.id}] events fetch failed:`, err.message); return []; }
+        try {
+          return await calendarService.listTodaysEvents(userId, tz);
+        } catch (err) {
+          console.warn(`[chat:${req.id}] events fetch failed:`, err.message);
+          return [];
+        }
       })(),
       // Overdue tasks
       (async () => {
@@ -206,14 +215,18 @@ router.post('/', requireAuth, async (req, res) => {
             .order('due_date', { ascending: true })
             .limit(5);
           return data ?? [];
-        } catch { return []; }
+        } catch {
+          return [];
+        }
       })(),
       // Habits still pending today
       (async () => {
         try {
           const habits = await listHabitsWithToday(userId);
-          return habits.filter(h => !h.done_today).map(h => ({ name: h.name }));
-        } catch { return []; }
+          return habits.filter((h) => !h.done_today).map((h) => ({ name: h.name }));
+        } catch {
+          return [];
+        }
       })()
     ]);
 
@@ -231,7 +244,7 @@ router.post('/', requireAuth, async (req, res) => {
 
     // 5) Build Gemini contents: prior turns + the new user message
     const contents = [
-      ...(history ?? []).map(h => ({
+      ...(history ?? []).map((h) => ({
         role: h.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: h.content }]
       })),
@@ -263,7 +276,7 @@ router.post('/', requireAuth, async (req, res) => {
 
       const followUpContents = [
         ...contents,
-        { role: 'model', parts: fnCalls.map(c => ({ functionCall: c })) },
+        { role: 'model', parts: fnCalls.map((c) => ({ functionCall: c })) },
         { role: 'user', parts: fnResponseParts }
       ];
 
@@ -304,7 +317,9 @@ router.post('/', requireAuth, async (req, res) => {
     try {
       sse(res, { type: 'error', message: err?.message ?? 'Internal error' });
       res.end();
-    } catch { /* connection already closed */ }
+    } catch {
+      /* connection already closed */
+    }
   }
 });
 

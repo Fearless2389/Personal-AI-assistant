@@ -57,23 +57,22 @@ export function buildSystemPrompt({
   currentDateTime = new Date().toISOString()
 } = {}) {
   const memoryLines = memoryContext.length
-    ? memoryContext.map(m => `- [${m.source_table}] ${m.content}`).join('\n')
+    ? memoryContext.map((m) => `- [${m.source_table}] ${m.content}`).join('\n')
     : '(no relevant memories yet)';
   const eventsLines = todaysEvents.length
-    ? todaysEvents.map(e => `- ${e.start_time}: ${e.title}`).join('\n')
+    ? todaysEvents.map((e) => `- ${e.start_time}: ${e.title}`).join('\n')
     : '(none yet)';
   const overdueLines = overdueTasks.length
-    ? overdueTasks.map(t => `- ${t.title} (due ${t.due_date})`).join('\n')
+    ? overdueTasks.map((t) => `- ${t.title} (due ${t.due_date})`).join('\n')
     : '(none)';
-  const habitsLines = todaysHabits.length
-    ? todaysHabits.map(h => `- ${h.name}`).join('\n')
-    : '(none yet)';
+  const habitsLines = todaysHabits.length ? todaysHabits.map((h) => `- ${h.name}`).join('\n') : '(none yet)';
 
-  const styleNote = {
-    friendly: 'Warm, encouraging, lightly witty — a sharp friend who has Rama\'s back.',
-    concise: 'Terse and efficient. Short sentences, zero filler.',
-    professional: 'Crisp and dependable, like an excellent chief of staff.'
-  }[personaStyle] ?? `Communication style: ${personaStyle}.`;
+  const styleNote =
+    {
+      friendly: "Warm, encouraging, lightly witty — a sharp friend who has Rama's back.",
+      concise: 'Terse and efficient. Short sentences, zero filler.',
+      professional: 'Crisp and dependable, like an excellent chief of staff.'
+    }[personaStyle] ?? `Communication style: ${personaStyle}.`;
 
   return `You are ${personaName}, Rama's personal AI chief of staff and second brain — not a generic chatbot.
 

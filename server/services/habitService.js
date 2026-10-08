@@ -14,7 +14,7 @@ export function dayStr(d = new Date()) {
  * streak isn't "broken" just because you haven't checked in yet this morning).
  */
 export function computeStreak(loggedDates) {
-  const set = new Set(loggedDates.map(d => String(d).slice(0, 10)));
+  const set = new Set(loggedDates.map((d) => String(d).slice(0, 10)));
   const cursor = new Date();
   cursor.setHours(0, 0, 0, 0);
   if (!set.has(dayStr(cursor))) cursor.setDate(cursor.getDate() - 1); // grace: allow ending yesterday
@@ -34,13 +34,9 @@ export async function recomputeStreak(userId, habitId) {
     .eq('user_id', userId)
     .order('logged_date', { ascending: false })
     .limit(400);
-  const dates = (logs ?? []).map(l => l.logged_date);
+  const dates = (logs ?? []).map((l) => l.logged_date);
   const streak = computeStreak(dates);
-  const { data: habit } = await supabaseAdmin
-    .from('habits')
-    .select('longest_streak')
-    .eq('id', habitId)
-    .maybeSingle();
+  const { data: habit } = await supabaseAdmin.from('habits').select('longest_streak').eq('id', habitId).maybeSingle();
   const longest = Math.max(streak, habit?.longest_streak ?? 0);
   await supabaseAdmin
     .from('habits')
@@ -110,7 +106,7 @@ export async function listHabitsWithToday(userId, date = dayStr()) {
     .order('created_at', { ascending: true });
   if (error) throw error;
 
-  const ids = (habits ?? []).map(h => h.id);
+  const ids = (habits ?? []).map((h) => h.id);
   let doneSet = new Set();
   if (ids.length) {
     const { data: todays } = await supabaseAdmin
@@ -119,7 +115,7 @@ export async function listHabitsWithToday(userId, date = dayStr()) {
       .eq('user_id', userId)
       .eq('logged_date', date)
       .in('habit_id', ids);
-    doneSet = new Set((todays ?? []).map(l => l.habit_id));
+    doneSet = new Set((todays ?? []).map((l) => l.habit_id));
   }
-  return (habits ?? []).map(h => ({ ...h, done_today: doneSet.has(h.id) }));
+  return (habits ?? []).map((h) => ({ ...h, done_today: doneSet.has(h.id) }));
 }

@@ -9,15 +9,11 @@ if (!url || !anonKey) {
   console.warn('[supabase] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY missing — auth and DB calls will fail.');
 }
 
-export const supabase = createClient(
-  url || 'https://missing-env.supabase.invalid',
-  anonKey || 'missing-env',
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined
-    }
+export const supabase = createClient(url || 'https://missing-env.supabase.invalid', anonKey || 'missing-env', {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined
   }
-);
+});

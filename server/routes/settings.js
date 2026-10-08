@@ -14,19 +14,23 @@ const SAFE_COLUMNS =
 
 // Fields the client is allowed to change (tokens/status/last_briefing_on are managed elsewhere).
 const EDITABLE = new Set([
-  'persona_name', 'persona_style', 'focus_areas',
-  'phone_number', 'whatsapp_number', 'sms_opt_in', 'whatsapp_opt_in', 'wake_up_time',
-  'timezone', 'briefing_enabled', 'briefing_hour'
+  'persona_name',
+  'persona_style',
+  'focus_areas',
+  'phone_number',
+  'whatsapp_number',
+  'sms_opt_in',
+  'whatsapp_opt_in',
+  'wake_up_time',
+  'timezone',
+  'briefing_enabled',
+  'briefing_hour'
 ]);
 
 // GET /api/settings — ensures a row exists, returns non-sensitive fields
 router.get('/', async (req, res) => {
   try {
-    let { data } = await supabaseAdmin
-      .from('user_settings')
-      .select(SAFE_COLUMNS)
-      .eq('id', req.user.id)
-      .maybeSingle();
+    let { data } = await supabaseAdmin.from('user_settings').select(SAFE_COLUMNS).eq('id', req.user.id).maybeSingle();
 
     if (!data) {
       const { data: created, error } = await supabaseAdmin

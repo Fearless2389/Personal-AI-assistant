@@ -78,8 +78,8 @@ async function gather(userId, email, tz = DEFAULT_TZ) {
   }
 
   const tasks = openTasks ?? [];
-  const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < now);
-  const dueToday = tasks.filter(t => {
+  const overdue = tasks.filter((t) => t.due_date && new Date(t.due_date) < now);
+  const dueToday = tasks.filter((t) => {
     if (!t.due_date) return false;
     const d = new Date(t.due_date);
     return d >= now && d <= endToday;
@@ -97,8 +97,8 @@ async function gather(userId, email, tz = DEFAULT_TZ) {
     stats: {
       overdue: overdue.length,
       dueToday: dueToday.length,
-      todo: tasks.filter(t => t.status === 'todo').length,
-      inProgress: tasks.filter(t => t.status === 'in_progress').length,
+      todo: tasks.filter((t) => t.status === 'todo').length,
+      inProgress: tasks.filter((t) => t.status === 'in_progress').length,
       events: events.length
     }
   };
@@ -109,19 +109,19 @@ function renderContext(ctx) {
   const fmtTime = (iso) => {
     try {
       return new Date(iso).toLocaleTimeString('en-US', {
-        timeZone: ctx.tz, hour: 'numeric', minute: '2-digit'
+        timeZone: ctx.tz,
+        hour: 'numeric',
+        minute: '2-digit'
       });
-    } catch { return ''; }
+    } catch {
+      return '';
+    }
   };
   const events = ctx.events.length
-    ? ctx.events.map(e => `- ${e.all_day ? 'All day' : fmtTime(e.start_time)}: ${e.title}`).join('\n')
+    ? ctx.events.map((e) => `- ${e.all_day ? 'All day' : fmtTime(e.start_time)}: ${e.title}`).join('\n')
     : '(nothing on the calendar)';
-  const overdue = ctx.overdue.length
-    ? ctx.overdue.map(t => `- ${t.title} [${t.priority}]`).join('\n')
-    : '(none)';
-  const dueToday = ctx.dueToday.length
-    ? ctx.dueToday.map(t => `- ${t.title} [${t.priority}]`).join('\n')
-    : '(none)';
+  const overdue = ctx.overdue.length ? ctx.overdue.map((t) => `- ${t.title} [${t.priority}]`).join('\n') : '(none)';
+  const dueToday = ctx.dueToday.length ? ctx.dueToday.map((t) => `- ${t.title} [${t.priority}]`).join('\n') : '(none)';
 
   return `Time of day: ${ctx.part}
 Date: ${formatInTz(ctx.tz, ctx.now)}
@@ -149,7 +149,7 @@ function fallbackBriefing(ctx) {
   const headline = bits.length
     ? `You have ${bits.join(', ')} on your plate.`
     : 'A clear slate — a good day to get ahead on something.';
-  const priorities = [...ctx.overdue, ...ctx.dueToday].slice(0, 3).map(t => ({
+  const priorities = [...ctx.overdue, ...ctx.dueToday].slice(0, 3).map((t) => ({
     title: t.title,
     reason: ctx.overdue.includes(t) ? 'Overdue — worth clearing first.' : 'Due today.'
   }));
@@ -172,11 +172,7 @@ export async function runMorningBriefing(userId, { email, tz, force = false } = 
   // Resolve the user's timezone if the caller didn't supply it.
   let resolvedTz = tz;
   if (!resolvedTz) {
-    const { data: s } = await supabaseAdmin
-      .from('user_settings')
-      .select('timezone')
-      .eq('id', userId)
-      .maybeSingle();
+    const { data: s } = await supabaseAdmin.from('user_settings').select('timezone').eq('id', userId).maybeSingle();
     resolvedTz = s?.timezone || DEFAULT_TZ;
   }
 

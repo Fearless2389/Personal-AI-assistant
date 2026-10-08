@@ -21,32 +21,35 @@ function loadSessionId() {
 
 export const useChatStore = create((set, get) => ({
   sessionId: loadSessionId(),
-  messages: [],          // [{ id, role: 'user'|'assistant', content, isStreaming? }]
-  memory: [],            // last set of retrieved memories
-  toolResults: [],       // [{ name, args, result, ts }]
+  messages: [], // [{ id, role: 'user'|'assistant', content, isStreaming? }]
+  memory: [], // last set of retrieved memories
+  toolResults: [], // [{ name, args, result, ts }]
   isStreaming: false,
 
-  addMessage: (msg) => set((s) => ({
-    messages: [...s.messages, { id: crypto.randomUUID?.() ?? String(Math.random()), ...msg }]
-  })),
+  addMessage: (msg) =>
+    set((s) => ({
+      messages: [...s.messages, { id: crypto.randomUUID?.() ?? String(Math.random()), ...msg }]
+    })),
 
-  appendDelta: (delta) => set((s) => {
-    const msgs = s.messages.slice();
-    const last = msgs[msgs.length - 1];
-    if (last && last.role === 'assistant') {
-      msgs[msgs.length - 1] = { ...last, content: (last.content ?? '') + delta };
-    }
-    return { messages: msgs };
-  }),
+  appendDelta: (delta) =>
+    set((s) => {
+      const msgs = s.messages.slice();
+      const last = msgs[msgs.length - 1];
+      if (last && last.role === 'assistant') {
+        msgs[msgs.length - 1] = { ...last, content: (last.content ?? '') + delta };
+      }
+      return { messages: msgs };
+    }),
 
-  finishStreaming: () => set((s) => {
-    const msgs = s.messages.slice();
-    const last = msgs[msgs.length - 1];
-    if (last && last.isStreaming) {
-      msgs[msgs.length - 1] = { ...last, isStreaming: false };
-    }
-    return { messages: msgs, isStreaming: false };
-  }),
+  finishStreaming: () =>
+    set((s) => {
+      const msgs = s.messages.slice();
+      const last = msgs[msgs.length - 1];
+      if (last && last.isStreaming) {
+        msgs[msgs.length - 1] = { ...last, isStreaming: false };
+      }
+      return { messages: msgs, isStreaming: false };
+    }),
 
   setStreaming: (v) => set({ isStreaming: v }),
   setMemory: (items) => set({ memory: items ?? [] }),

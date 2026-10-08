@@ -32,7 +32,11 @@ export function VoiceButton({ onTranscript, lang = 'en-US' }) {
           ? 'bg-danger text-white'
           : 'bg-surface-3 text-text-secondary hover:bg-nexus-primary hover:text-on-accent'
       }`}
-      animate={isRecording ? { boxShadow: ['0 0 0 0 rgba(239,68,68,0.7)', '0 0 0 8px rgba(239,68,68,0)'] } : { boxShadow: '0 0 0 0 rgba(0,0,0,0)' }}
+      animate={
+        isRecording
+          ? { boxShadow: ['0 0 0 0 rgba(239,68,68,0.7)', '0 0 0 8px rgba(239,68,68,0)'] }
+          : { boxShadow: '0 0 0 0 rgba(0,0,0,0)' }
+      }
       transition={isRecording ? { duration: 1.2, repeat: Infinity } : { duration: 0.1 }}
       aria-label={isRecording ? 'Stop recording' : 'Start voice input'}
       title={isRecording ? 'Stop recording' : 'Start voice input'}

@@ -25,7 +25,9 @@ export function TopBar() {
   const ref = useRef(null);
 
   useEffect(() => {
-    const onClick = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    const onClick = (e) => {
+      if (!ref.current?.contains(e.target)) setOpen(false);
+    };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
@@ -35,12 +37,10 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-30 bg-surface-base/80 backdrop-blur border-b border-surface-border">
       <div className="px-4 md:px-6 h-14 flex items-center justify-between">
-        <h1 className="font-display text-base font-semibold tracking-tight">
-          {TITLES[pathname] ?? 'Nexus'}
-        </h1>
+        <h1 className="font-display text-base font-semibold tracking-tight">{TITLES[pathname] ?? 'Nexus'}</h1>
         <div className="relative" ref={ref}>
           <button
-            onClick={() => setOpen(v => !v)}
+            onClick={() => setOpen((v) => !v)}
             className="w-9 h-9 rounded-full bg-gradient-to-br from-nexus-primary to-nexus-secondary text-white font-display font-semibold grid place-items-center hover:opacity-90"
             aria-label="Account"
           >
@@ -57,7 +57,10 @@ export function TopBar() {
                   variant="ghost"
                   size="sm"
                   className="w-full justify-start"
-                  onClick={async () => { setOpen(false); await supabase.auth.signOut(); }}
+                  onClick={async () => {
+                    setOpen(false);
+                    await supabase.auth.signOut();
+                  }}
                 >
                   Sign out
                 </Button>

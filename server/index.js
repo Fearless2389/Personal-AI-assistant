@@ -23,11 +23,13 @@ const PORT = Number(process.env.PORT ?? 3001);
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
 
 app.use(requestId);
-app.use(cors({
-  origin: CLIENT_ORIGIN,
-  credentials: true,
-  exposedHeaders: ['Content-Type', 'X-Request-Id']
-}));
+app.use(
+  cors({
+    origin: CLIENT_ORIGIN,
+    credentials: true,
+    exposedHeaders: ['Content-Type', 'X-Request-Id']
+  })
+);
 app.use(express.json({ limit: '1mb' }));
 
 // Healthcheck — no auth, used by Render and curl smoke tests

@@ -22,12 +22,16 @@ function chime() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.frequency.value = 880;
-    osc.connect(gain); gain.connect(ctx.destination);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
     gain.gain.setValueAtTime(0.001, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9);
-    osc.start(); osc.stop(ctx.currentTime + 0.9);
-  } catch { /* audio blocked — silent */ }
+    osc.start();
+    osc.stop(ctx.currentTime + 0.9);
+  } catch {
+    /* audio blocked — silent */
+  }
 }
 
 function fmt(sec) {
@@ -46,9 +50,15 @@ export default function Focus() {
   const tickRef = useRef(null);
 
   const loadStats = useCallback(async () => {
-    try { setStats(await focusApi.stats()); } catch { /* ignore */ }
+    try {
+      setStats(await focusApi.stats());
+    } catch {
+      /* ignore */
+    }
   }, []);
-  useEffect(() => { loadStats(); }, [loadStats]);
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
 
   const selectPreset = (m) => {
     if (running) return;
@@ -68,24 +78,39 @@ export default function Focus() {
         completed: true
       });
       loadStats();
-    } catch { /* ignore log failure */ }
+    } catch {
+      /* ignore log failure */
+    }
     setRemaining(minutes * 60);
   }, [minutes, project, loadStats]);
 
   useEffect(() => {
-    if (!running) { clearInterval(tickRef.current); return; }
+    if (!running) {
+      clearInterval(tickRef.current);
+      return;
+    }
     tickRef.current = setInterval(() => {
-      setRemaining(prev => {
-        if (prev <= 1) { clearInterval(tickRef.current); complete(); return 0; }
+      setRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(tickRef.current);
+          complete();
+          return 0;
+        }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(tickRef.current);
   }, [running, complete]);
 
-  const start = () => { startedAtRef.current = new Date().toISOString(); setRunning(true); };
+  const start = () => {
+    startedAtRef.current = new Date().toISOString();
+    setRunning(true);
+  };
   const pause = () => setRunning(false);
-  const reset = () => { setRunning(false); setRemaining(minutes * 60); };
+  const reset = () => {
+    setRunning(false);
+    setRemaining(minutes * 60);
+  };
 
   const progress = 1 - remaining / (minutes * 60);
   const dashoffset = CIRC * (1 - progress);
@@ -100,9 +125,15 @@ export default function Focus() {
             <svg width="300" height="300" className="-rotate-90">
               <circle cx="150" cy="150" r={RADIUS} fill="none" stroke="var(--color-surface-3)" strokeWidth="12" />
               <circle
-                cx="150" cy="150" r={RADIUS} fill="none"
-                stroke="url(#focusGrad)" strokeWidth="12" strokeLinecap="round"
-                strokeDasharray={CIRC} strokeDashoffset={dashoffset}
+                cx="150"
+                cy="150"
+                r={RADIUS}
+                fill="none"
+                stroke="url(#focusGrad)"
+                strokeWidth="12"
+                strokeLinecap="round"
+                strokeDasharray={CIRC}
+                strokeDashoffset={dashoffset}
                 style={{ transition: 'stroke-dashoffset 1s linear' }}
               />
               <defs>
@@ -119,10 +150,18 @@ export default function Focus() {
           </div>
 
           <div className="flex gap-2 mt-6">
-            {!running
-              ? <Button onClick={start} size="lg">{remaining < minutes * 60 ? 'Resume' : 'Start'}</Button>
-              : <Button onClick={pause} size="lg" variant="secondary">Pause</Button>}
-            <Button onClick={reset} size="lg" variant="ghost">Reset</Button>
+            {!running ? (
+              <Button onClick={start} size="lg">
+                {remaining < minutes * 60 ? 'Resume' : 'Start'}
+              </Button>
+            ) : (
+              <Button onClick={pause} size="lg" variant="secondary">
+                Pause
+              </Button>
+            )}
+            <Button onClick={reset} size="lg" variant="ghost">
+              Reset
+            </Button>
           </div>
         </Card>
 
@@ -130,7 +169,7 @@ export default function Focus() {
           <Card>
             <p className="text-xs uppercase tracking-wider text-text-muted mb-2">Length</p>
             <div className="flex flex-wrap gap-2">
-              {PRESETS.map(p => (
+              {PRESETS.map((p) => (
                 <button
                   key={p.minutes}
                   onClick={() => selectPreset(p.minutes)}
@@ -147,16 +186,25 @@ export default function Focus() {
               ))}
             </div>
             <label className="block text-sm text-text-secondary mt-4 mb-1">Project tag</label>
-            <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="optional, e.g. thesis" disabled={running} />
+            <Input
+              value={project}
+              onChange={(e) => setProject(e.target.value)}
+              placeholder="optional, e.g. thesis"
+              disabled={running}
+            />
           </Card>
 
           <Card>
             <p className="text-xs uppercase tracking-wider text-text-muted mb-3">Today</p>
             <div className="flex items-baseline gap-2">
-              <span className="font-display text-3xl font-semibold text-text-primary tabular-nums">{stats.todayMinutes}</span>
+              <span className="font-display text-3xl font-semibold text-text-primary tabular-nums">
+                {stats.todayMinutes}
+              </span>
               <span className="text-sm text-text-secondary">min focused</span>
             </div>
-            <p className="text-xs text-text-muted mt-1">{stats.todaySessions} sessions · {stats.weekMinutes} min this week</p>
+            <p className="text-xs text-text-muted mt-1">
+              {stats.todaySessions} sessions · {stats.weekMinutes} min this week
+            </p>
           </Card>
         </div>
       </div>

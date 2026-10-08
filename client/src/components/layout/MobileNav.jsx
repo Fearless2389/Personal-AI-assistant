@@ -3,11 +3,11 @@ import { LayoutDashboard, MessageSquare, ListTodo, StickyNote, MoreHorizontal } 
 import { cn } from '../../lib/utils.js';
 
 const ITEMS = [
-  { to: '/dashboard', label: 'Home',  icon: LayoutDashboard },
-  { to: '/chat',      label: 'Chat',  icon: MessageSquare },
-  { to: '/tasks',     label: 'Tasks', icon: ListTodo },
-  { to: '/notes',     label: 'Notes', icon: StickyNote },
-  { to: '/settings',  label: 'More',  icon: MoreHorizontal }
+  { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { to: '/chat', label: 'Chat', icon: MessageSquare },
+  { to: '/tasks', label: 'Tasks', icon: ListTodo },
+  { to: '/notes', label: 'Notes', icon: StickyNote },
+  { to: '/settings', label: 'More', icon: MoreHorizontal }
 ];
 
 export function MobileNav() {
@@ -18,10 +18,12 @@ export function MobileNav() {
           <NavLink
             key={to}
             to={to}
-            className={({ isActive }) => cn(
-              'flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] transition-colors',
-              isActive ? 'text-nexus-primary' : 'text-text-secondary'
-            )}
+            className={({ isActive }) =>
+              cn(
+                'flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] transition-colors',
+                isActive ? 'text-nexus-primary' : 'text-text-secondary'
+              )
+            }
           >
             <Icon size={20} strokeWidth={2} />
             <span>{label}</span>

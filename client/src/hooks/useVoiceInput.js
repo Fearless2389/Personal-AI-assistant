@@ -30,7 +30,11 @@ export function useVoiceInput({ lang = 'en-US' } = {}) {
 
     recognitionRef.current = rec;
     return () => {
-      try { rec.abort(); } catch { /* noop */ }
+      try {
+        rec.abort();
+      } catch {
+        /* noop */
+      }
     };
   }, [lang]);
 
@@ -40,12 +44,18 @@ export function useVoiceInput({ lang = 'en-US' } = {}) {
     try {
       recognitionRef.current.start();
       setIsRecording(true);
-    } catch { /* already started */ }
+    } catch {
+      /* already started */
+    }
   }, []);
 
   const stop = useCallback(() => {
     if (!recognitionRef.current) return;
-    try { recognitionRef.current.stop(); } catch { /* noop */ }
+    try {
+      recognitionRef.current.stop();
+    } catch {
+      /* noop */
+    }
     setIsRecording(false);
   }, []);
 

@@ -7,7 +7,7 @@ function secret() {
   if (!s || s.length < 32) {
     throw new Error(
       'NEXUS_STATE_HMAC_SECRET must be set to a long random string (>=32 chars). ' +
-      "Generate with: node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\""
+        "Generate with: node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\""
     );
   }
   return s;

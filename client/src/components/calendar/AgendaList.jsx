@@ -16,20 +16,18 @@ function timeRange(event) {
 function EventRow({ event }) {
   return (
     <div className="flex gap-3 py-3 border-b border-surface-border last:border-b-0">
-      <div className="shrink-0 w-24 text-xs font-mono text-text-secondary pt-0.5">
-        {timeRange(event)}
-      </div>
+      <div className="shrink-0 w-24 text-xs font-mono text-text-secondary pt-0.5">{timeRange(event)}</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
           <h4 className="font-medium text-sm text-text-primary truncate">{event.title}</h4>
           {event.all_day && <Badge intent="neutral">all day</Badge>}
         </div>
         {event.location && (
-          <p className="text-xs text-text-secondary truncate flex items-center gap-1"><MapPin size={11} /> {event.location}</p>
+          <p className="text-xs text-text-secondary truncate flex items-center gap-1">
+            <MapPin size={11} /> {event.location}
+          </p>
         )}
-        {event.description && (
-          <p className="text-xs text-text-muted truncate mt-0.5">{event.description}</p>
-        )}
+        {event.description && <p className="text-xs text-text-muted truncate mt-0.5">{event.description}</p>}
         {event.html_link && (
           <a
             href={event.html_link}
@@ -53,9 +51,7 @@ export function AgendaList({ groupedEvents }) {
         <Card key={g.date.toISOString()}>
           <div className="flex items-baseline justify-between mb-2">
             <h3 className="font-display text-base font-semibold text-text-primary">{g.label}</h3>
-            <span className="text-xs text-text-muted font-mono">
-              {format(g.date, 'EEEE, MMM d')}
-            </span>
+            <span className="text-xs text-text-muted font-mono">{format(g.date, 'EEEE, MMM d')}</span>
           </div>
           <div>
             {g.events.map((e) => (

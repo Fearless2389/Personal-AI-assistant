@@ -5,7 +5,9 @@ import { cn } from '../../lib/utils.js';
 export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose?.();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
@@ -19,10 +21,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={onClose}
-          />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
           <motion.div
             className={cn(
               'relative bg-surface-2 border border-surface-border rounded-2xl shadow-2xl w-full',
@@ -41,11 +40,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
               </div>
             )}
             <div className="px-5 py-4">{children}</div>
-            {footer && (
-              <div className="px-5 py-3 border-t border-surface-border flex justify-end gap-2">
-                {footer}
-              </div>
-            )}
+            {footer && <div className="px-5 py-3 border-t border-surface-border flex justify-end gap-2">{footer}</div>}
           </motion.div>
         </motion.div>
       )}

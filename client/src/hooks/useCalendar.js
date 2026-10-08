@@ -22,7 +22,7 @@ function groupByDay(events) {
 }
 
 export function useCalendar() {
-  const [status, setStatus] = useState('unknown');           // 'connected' | 'disconnected' | 'broken' | 'unknown'
+  const [status, setStatus] = useState('unknown'); // 'connected' | 'disconnected' | 'broken' | 'unknown'
   const [lastConnectedAt, setLastConnectedAt] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,13 +56,21 @@ export function useCalendar() {
       }
     })();
     inFlight.current = run;
-    try { await run; } finally { inFlight.current = null; }
+    try {
+      await run;
+    } finally {
+      inFlight.current = null;
+    }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refresh]);

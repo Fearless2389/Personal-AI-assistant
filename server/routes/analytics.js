@@ -15,20 +15,27 @@ router.get('/', async (req, res) => {
   const userId = req.user.id;
   try {
     const now = new Date();
-    const start = new Date(now); start.setDate(now.getDate() - 6); start.setHours(0, 0, 0, 0);
+    const start = new Date(now);
+    start.setDate(now.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
     const startIso = start.toISOString();
 
     // Build the 7-day skeleton (oldest → newest).
     const days = [];
     for (let i = 0; i < 7; i++) {
-      const d = new Date(start); d.setDate(start.getDate() + i);
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
       days.push({ date: dayStr(d), tasksCompleted: 0, focusMinutes: 0, habitCheckins: 0 });
     }
     const idx = Object.fromEntries(days.map((d, i) => [d.date, i]));
 
     const [allTasks, focus, habitLogs, notesCount, habitsCount, goalsCount] = await Promise.all([
       supabaseAdmin.from('tasks').select('status, updated_at').eq('user_id', userId),
-      supabaseAdmin.from('focus_sessions').select('duration_minutes, started_at, completed').eq('user_id', userId).gte('started_at', startIso),
+      supabaseAdmin
+        .from('focus_sessions')
+        .select('duration_minutes, started_at, completed')
+        .eq('user_id', userId)
+        .gte('started_at', startIso),
       supabaseAdmin.from('habit_logs').select('logged_date').eq('user_id', userId).gte('logged_date', dayStr(start)),
       supabaseAdmin.from('notes').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       supabaseAdmin.from('habits').select('id', { count: 'exact', head: true }).eq('user_id', userId),

@@ -3,7 +3,7 @@ import { Button } from '../ui/Button.jsx';
 const COPY = {
   reconnect: {
     title: 'Google connection expired',
-    body: 'We can\'t talk to your calendar anymore. Reconnect to bring it back.',
+    body: "We can't talk to your calendar anymore. Reconnect to bring it back.",
     cta: 'Reconnect',
     intent: 'danger'
   },

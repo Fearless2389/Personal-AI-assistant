@@ -32,7 +32,7 @@ router.post('/twilio', validateTwilioSignature, async (req, res) => {
       return res.send(twiml('You are subscribed to Nexus reminders again.'));
     }
     // Default: friendly acknowledgement (richer intent parsing is future work).
-    return res.send(twiml('Got it — I\'ll keep this in mind. Manage reminders in the Nexus app.'));
+    return res.send(twiml("Got it — I'll keep this in mind. Manage reminders in the Nexus app."));
   } catch (err) {
     console.error(`[webhooks:${req.id}] twilio inbound failed:`, err.message);
     return res.send(twiml());

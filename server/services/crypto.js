@@ -10,7 +10,7 @@ function loadKey() {
   if (!raw) {
     throw new Error(
       'NEXUS_ENCRYPTION_KEY is not set. Generate one with: ' +
-      "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
+        "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
     );
   }
   let key;
@@ -20,9 +20,7 @@ function loadKey() {
     throw new Error('NEXUS_ENCRYPTION_KEY must be base64-encoded');
   }
   if (key.length !== 32) {
-    throw new Error(
-      `NEXUS_ENCRYPTION_KEY must decode to exactly 32 bytes (got ${key.length}).`
-    );
+    throw new Error(`NEXUS_ENCRYPTION_KEY must decode to exactly 32 bytes (got ${key.length}).`);
   }
   return key;
 }

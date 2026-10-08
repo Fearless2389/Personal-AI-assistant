@@ -2,16 +2,15 @@ import { google } from 'googleapis';
 import { supabaseAdmin } from './supabase.js';
 import { buildOAuthClient } from './googleOAuth.js';
 import { encrypt, decrypt } from './crypto.js';
-import {
-  getListCache, setListCache, invalidateListCache,
-  getIdem, setIdem
-} from './eventCache.js';
+import { getListCache, setListCache, invalidateListCache, getIdem, setIdem } from './eventCache.js';
 import { DEFAULT_TZ, dayRangeUtc } from './time.js';
 
 /** In-flight authorized client builds, deduped per user. */
 const inFlight = new Map();
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 /**
  * Read encrypted tokens out of user_settings and decrypt them.
@@ -50,15 +49,12 @@ async function saveTokens(userId, { access_token, refresh_token, expiry_date }) 
   const next = {
     google_access_token: access_token != null ? encrypt(access_token) : (existing?.google_access_token ?? null),
     google_refresh_token: refresh_token != null ? encrypt(refresh_token) : (existing?.google_refresh_token ?? null),
-    google_token_expires_at: expiry_date != null
-      ? new Date(expiry_date).toISOString()
-      : (existing?.google_token_expires_at ?? null)
+    google_token_expires_at:
+      expiry_date != null ? new Date(expiry_date).toISOString() : (existing?.google_token_expires_at ?? null)
   };
 
   // Upsert in case the user_settings row does not yet exist for this user.
-  const { error } = await supabaseAdmin
-    .from('user_settings')
-    .upsert({ id: userId, ...next }, { onConflict: 'id' });
+  const { error } = await supabaseAdmin.from('user_settings').upsert({ id: userId, ...next }, { onConflict: 'id' });
   if (error) throw error;
 }
 
@@ -185,14 +181,16 @@ export async function listEvents(userId, { timeMin, timeMax } = {}) {
   try {
     const client = await getAuthorizedClient(userId);
     const calendar = google.calendar({ version: 'v3', auth: client });
-    const resp = await withRetry(() => calendar.events.list({
-      calendarId: 'primary',
-      singleEvents: true,
-      orderBy: 'startTime',
-      timeMin: _timeMin,
-      timeMax: _timeMax,
-      maxResults: 50
-    }));
+    const resp = await withRetry(() =>
+      calendar.events.list({
+        calendarId: 'primary',
+        singleEvents: true,
+        orderBy: 'startTime',
+        timeMin: _timeMin,
+        timeMax: _timeMax,
+        maxResults: 50
+      })
+    );
     const events = (resp.data?.items ?? []).map(normalizeEvent);
     setListCache(userId, cacheKey, events);
     return events;
@@ -229,16 +227,18 @@ export async function createEvent(userId, args, { idempotencyKey } = {}) {
   try {
     const client = await getAuthorizedClient(userId);
     const calendar = google.calendar({ version: 'v3', auth: client });
-    const resp = await withRetry(() => calendar.events.insert({
-      calendarId: 'primary',
-      requestBody: {
-        summary: title,
-        description,
-        location,
-        start: { dateTime: new Date(start_time).toISOString() },
-        end: { dateTime: new Date(end_time).toISOString() }
-      }
-    }));
+    const resp = await withRetry(() =>
+      calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: {
+          summary: title,
+          description,
+          location,
+          start: { dateTime: new Date(start_time).toISOString() },
+          end: { dateTime: new Date(end_time).toISOString() }
+        }
+      })
+    );
     invalidateListCache(userId);
     const normalized = normalizeEvent(resp.data);
     if (idempotencyKey) setIdem(userId, idempotencyKey, normalized);
@@ -256,11 +256,13 @@ export async function disconnect(userId) {
     const tokens = await loadTokens(userId);
     if (tokens?.refresh_token) {
       const client = buildOAuthClient();
-      await client.revokeToken(tokens.refresh_token).catch((err) =>
-        console.warn(`[calendar:${userId}] revoke failed (continuing):`, err.message)
-      );
+      await client
+        .revokeToken(tokens.refresh_token)
+        .catch((err) => console.warn(`[calendar:${userId}] revoke failed (continuing):`, err.message));
     }
-  } catch { /* loadTokens may throw if already disconnected — fine */ }
+  } catch {
+    /* loadTokens may throw if already disconnected — fine */
+  }
 
   invalidateListCache(userId);
   await supabaseAdmin
@@ -280,13 +282,14 @@ export async function disconnect(userId) {
  */
 export async function completeConnect(userId, { access_token, refresh_token, expiry_date }) {
   await saveTokens(userId, { access_token, refresh_token, expiry_date });
-  await supabaseAdmin
-    .from('user_settings')
-    .upsert({
+  await supabaseAdmin.from('user_settings').upsert(
+    {
       id: userId,
       google_connection_status: 'connected',
       last_connected_at: new Date().toISOString()
-    }, { onConflict: 'id' });
+    },
+    { onConflict: 'id' }
+  );
 }
 
 /**

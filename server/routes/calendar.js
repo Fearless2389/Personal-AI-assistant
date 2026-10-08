@@ -10,26 +10,34 @@ const router = Router();
 const STATE_COOKIE = 'nx_oauth_state';
 const COOKIE_PATH = '/api/calendar';
 
-function b64url(buf) { return Buffer.from(buf).toString('base64url'); }
+function b64url(buf) {
+  return Buffer.from(buf).toString('base64url');
+}
 
 function setStateCookie(res, token) {
-  res.setHeader('Set-Cookie', cookie.serialize(STATE_COOKIE, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: COOKIE_PATH,
-    maxAge: 600,
-    secure: process.env.NODE_ENV === 'production'
-  }));
+  res.setHeader(
+    'Set-Cookie',
+    cookie.serialize(STATE_COOKIE, token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: COOKIE_PATH,
+      maxAge: 600,
+      secure: process.env.NODE_ENV === 'production'
+    })
+  );
 }
 
 function clearStateCookie(res) {
-  res.setHeader('Set-Cookie', cookie.serialize(STATE_COOKIE, '', {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: COOKIE_PATH,
-    maxAge: 0,
-    secure: process.env.NODE_ENV === 'production'
-  }));
+  res.setHeader(
+    'Set-Cookie',
+    cookie.serialize(STATE_COOKIE, '', {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: COOKIE_PATH,
+      maxAge: 0,
+      secure: process.env.NODE_ENV === 'production'
+    })
+  );
 }
 
 function clientHome() {
@@ -42,7 +50,9 @@ function clientHome() {
 router.get('/status', requireAuth, async (req, res, next) => {
   try {
     res.json(await calendarService.getStatus(req.user.id));
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 /* ──────────────────────────────────────────────────────────────
@@ -123,7 +133,9 @@ router.post('/disconnect', requireAuth, async (req, res, next) => {
   try {
     await calendarService.disconnect(req.user.id);
     res.json({ ok: true });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 /* ──────────────────────────────────────────────────────────────
@@ -139,13 +151,14 @@ router.get('/events', requireAuth, async (req, res) => {
   } catch (err) {
     const status = err.status ?? 500;
     if (status === 429) res.setHeader('Retry-After', String(err.retryAfter ?? 30));
-    const body = err.message === 'connection_broken'
-      ? { error: 'reconnect_required' }
-      : err.message === 'rate_limited'
-      ? { error: 'rate_limited' }
-      : err.message === 'not_connected'
-      ? { error: 'not_connected' }
-      : { error: err.message ?? 'list_failed' };
+    const body =
+      err.message === 'connection_broken'
+        ? { error: 'reconnect_required' }
+        : err.message === 'rate_limited'
+          ? { error: 'rate_limited' }
+          : err.message === 'not_connected'
+            ? { error: 'not_connected' }
+            : { error: err.message ?? 'list_failed' };
     console.error(`[calendar:${req.id}] list failed:`, err.message);
     res.status(status).json(body);
   }

@@ -17,13 +17,17 @@ export function validateTwilioSignature(req, res, next) {
   const url = base + req.originalUrl;
 
   const params = req.body || {};
-  const data = Object.keys(params).sort().reduce((acc, k) => acc + k + params[k], url);
+  const data = Object.keys(params)
+    .sort()
+    .reduce((acc, k) => acc + k + params[k], url);
   const expected = createHmac('sha1', token).update(Buffer.from(data, 'utf-8')).digest('base64');
 
   try {
     const a = Buffer.from(expected);
     const b = Buffer.from(String(signature));
     if (a.length === b.length && timingSafeEqual(a, b)) return next();
-  } catch { /* fall through */ }
+  } catch {
+    /* fall through */
+  }
   return res.status(403).send('Invalid signature');
 }

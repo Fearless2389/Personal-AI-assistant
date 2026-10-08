@@ -45,7 +45,7 @@ export async function scheduleReminder(userId, { message, scheduled_at, linked_t
     id: data.id,
     scheduled_at: data.scheduled_at,
     delivery: isSmsConfigured()
-      ? 'Reminder scheduled — you\'ll get a text at that time.'
+      ? "Reminder scheduled — you'll get a text at that time."
       : 'Reminder saved. It will send once SMS is configured on the server.'
   };
 }

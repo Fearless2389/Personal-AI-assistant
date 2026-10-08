@@ -35,7 +35,8 @@ function GoalCard({ goal, onToggleMilestone, onAddMilestone, onDelete }) {
   const submitMilestone = async () => {
     if (!msTitle.trim()) return;
     await onAddMilestone(goal, msTitle.trim());
-    setMsTitle(''); setAdding(false);
+    setMsTitle('');
+    setAdding(false);
   };
 
   return (
@@ -44,36 +45,50 @@ function GoalCard({ goal, onToggleMilestone, onAddMilestone, onDelete }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="font-display text-base font-semibold text-text-primary truncate">{goal.title}</h3>
-            <Badge intent={CATEGORY_INTENT[goal.category] ?? 'neutral'} className="capitalize">{goal.category}</Badge>
+            <Badge intent={CATEGORY_INTENT[goal.category] ?? 'neutral'} className="capitalize">
+              {goal.category}
+            </Badge>
           </div>
           {goal.description && <p className="text-sm text-text-secondary mt-0.5">{goal.description}</p>}
           {goal.target_date && (
             <p className="text-xs text-text-muted mt-0.5">Target: {formatDate(goal.target_date, 'MMM d, yyyy')}</p>
           )}
         </div>
-        <button onClick={() => onDelete(goal)} className="text-text-muted hover:text-danger transition-colors shrink-0" aria-label="Delete goal"><X size={15} /></button>
+        <button
+          onClick={() => onDelete(goal)}
+          className="text-text-muted hover:text-danger transition-colors shrink-0"
+          aria-label="Delete goal"
+        >
+          <X size={15} />
+        </button>
       </div>
 
       <div className="mt-3 flex items-center gap-3">
         <span className="text-xs text-text-secondary tabular-nums w-9">{goal.progress_pct ?? 0}%</span>
-        <div className="flex-1"><ProgressBar pct={goal.progress_pct} /></div>
+        <div className="flex-1">
+          <ProgressBar pct={goal.progress_pct} />
+        </div>
       </div>
 
       {milestones.length > 0 && (
         <ul className="mt-3 space-y-1.5">
-          {milestones.map(m => (
+          {milestones.map((m) => (
             <li key={m.id} className="flex items-center gap-2">
               <button
                 onClick={() => onToggleMilestone(goal, m)}
                 className={[
                   'shrink-0 w-5 h-5 rounded border grid place-items-center transition-colors',
-                  m.completed ? 'bg-success border-success text-white' : 'border-surface-border text-text-muted hover:border-nexus-primary/60'
+                  m.completed
+                    ? 'bg-success border-success text-white'
+                    : 'border-surface-border text-text-muted hover:border-nexus-primary/60'
                 ].join(' ')}
                 aria-label={m.completed ? `Uncomplete ${m.title}` : `Complete ${m.title}`}
               >
                 {m.completed ? <Check size={12} strokeWidth={3} /> : null}
               </button>
-              <span className={['text-sm', m.completed ? 'text-text-muted line-through' : 'text-text-primary'].join(' ')}>
+              <span
+                className={['text-sm', m.completed ? 'text-text-muted line-through' : 'text-text-primary'].join(' ')}
+              >
                 {m.title}
               </span>
               {m.due_date && <span className="text-xs text-text-muted ml-auto">{formatDate(m.due_date, 'MMM d')}</span>}
@@ -88,10 +103,15 @@ function GoalCard({ goal, onToggleMilestone, onAddMilestone, onDelete }) {
             value={msTitle}
             onChange={(e) => setMsTitle(e.target.value)}
             placeholder="Milestone…"
-            onKeyDown={(e) => { if (e.key === 'Enter') submitMilestone(); if (e.key === 'Escape') setAdding(false); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitMilestone();
+              if (e.key === 'Escape') setAdding(false);
+            }}
             autoFocus
           />
-          <Button size="sm" onClick={submitMilestone} disabled={!msTitle.trim()}>Add</Button>
+          <Button size="sm" onClick={submitMilestone} disabled={!msTitle.trim()}>
+            Add
+          </Button>
         </div>
       ) : (
         <button onClick={() => setAdding(true)} className="mt-3 text-xs text-nexus-primary hover:underline">
@@ -110,15 +130,21 @@ export default function Goals() {
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
       const { goals: list } = await goalsApi.list();
       setGoals(list ?? []);
-    } catch (err) { setError(err.message); }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, [setGoals, setLoading]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const createGoal = async () => {
     if (!form.title.trim()) return;
@@ -133,24 +159,34 @@ export default function Goals() {
       upsertGoal(goal);
       setForm({ title: '', description: '', category: 'personal', target_date: '' });
       setModalOpen(false);
-    } catch (err) { setError(err.message); }
-    finally { setSaving(false); }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const deleteGoal = async (goal) => {
     removeGoal(goal.id);
-    try { await goalsApi.remove(goal.id); }
-    catch (err) { setError(err.message); load(); }
+    try {
+      await goalsApi.remove(goal.id);
+    } catch (err) {
+      setError(err.message);
+      load();
+    }
   };
 
   const toggleMilestone = async (goal, m) => {
-    const next = (goal.milestones ?? []).map(x => x.id === m.id ? { ...x, completed: !m.completed } : x);
+    const next = (goal.milestones ?? []).map((x) => (x.id === m.id ? { ...x, completed: !m.completed } : x));
     setMilestones(goal.id, next);
     try {
       await goalsApi.updateMilestone(goal.id, m.id, { completed: !m.completed });
       const { goals: list } = await goalsApi.list(); // refresh progress
       setGoals(list ?? []);
-    } catch (err) { setError(err.message); load(); }
+    } catch (err) {
+      setError(err.message);
+      load();
+    }
   };
 
   const addMilestone = async (goal, title) => {
@@ -159,32 +195,53 @@ export default function Goals() {
       setMilestones(goal.id, [...(goal.milestones ?? []), milestone]);
       const { goals: list } = await goalsApi.list();
       setGoals(list ?? []);
-    } catch (err) { setError(err.message); }
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
     <PageWrapper>
       <div className="flex items-center justify-between mb-5">
         <h1 className="font-display text-2xl font-semibold text-text-primary">Goals</h1>
-        <Button size="sm" onClick={() => setModalOpen(true)}><Plus size={15} /> New goal</Button>
+        <Button size="sm" onClick={() => setModalOpen(true)}>
+          <Plus size={15} /> New goal
+        </Button>
       </div>
 
-      {error && <div className="mb-4"><Badge intent="danger">{error}</Badge></div>}
+      {error && (
+        <div className="mb-4">
+          <Badge intent="danger">{error}</Badge>
+        </div>
+      )}
 
       {loading ? (
-        <Card><div className="grid place-items-center py-12"><LoadingSpinner /></div></Card>
+        <Card>
+          <div className="grid place-items-center py-12">
+            <LoadingSpinner />
+          </div>
+        </Card>
       ) : goals.length === 0 ? (
         <Card>
           <EmptyState
             icon="◬"
             title="No goals yet"
             description="Set a long-running goal and break it into milestones. Progress tracks itself."
-            action={<Button size="sm" onClick={() => setModalOpen(true)}>Create your first goal</Button>}
+            action={
+              <Button size="sm" onClick={() => setModalOpen(true)}>
+                Create your first goal
+              </Button>
+            }
           />
         </Card>
       ) : (
-        <motion.div className="grid gap-4 md:grid-cols-2" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-          {goals.map(g => (
+        <motion.div
+          className="grid gap-4 md:grid-cols-2"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {goals.map((g) => (
             <GoalCard
               key={g.id}
               goal={g}
@@ -202,19 +259,37 @@ export default function Goals() {
         title="New goal"
         footer={
           <>
-            <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={createGoal} disabled={saving || !form.title.trim()}>{saving ? 'Saving…' : 'Create goal'}</Button>
+            <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={createGoal} disabled={saving || !form.title.trim()}>
+              {saving ? 'Saving…' : 'Create goal'}
+            </Button>
           </>
         }
       >
         <label className="block text-sm text-text-secondary mb-1">Title</label>
-        <Input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Ship Nexus v1" autoFocus />
+        <Input
+          value={form.title}
+          onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+          placeholder="e.g. Ship Nexus v1"
+          autoFocus
+        />
         <label className="block text-sm text-text-secondary mt-3 mb-1">Description</label>
-        <Input as="textarea" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional" />
+        <Input
+          as="textarea"
+          value={form.description}
+          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          placeholder="Optional"
+        />
         <div className="grid grid-cols-2 gap-3 mt-3">
           <div>
             <label className="block text-sm text-text-secondary mb-1">Category</label>
-            <Input as="select" value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}>
+            <Input
+              as="select"
+              value={form.category}
+              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+            >
               <option value="personal">Personal</option>
               <option value="academic">Academic</option>
               <option value="health">Health</option>
@@ -223,7 +298,11 @@ export default function Goals() {
           </div>
           <div>
             <label className="block text-sm text-text-secondary mb-1">Target date</label>
-            <Input type="date" value={form.target_date} onChange={(e) => setForm(f => ({ ...f, target_date: e.target.value }))} />
+            <Input
+              type="date"
+              value={form.target_date}
+              onChange={(e) => setForm((f) => ({ ...f, target_date: e.target.value }))}
+            />
           </div>
         </div>
       </Modal>

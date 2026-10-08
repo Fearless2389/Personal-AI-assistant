@@ -16,7 +16,7 @@ export function ChatBubble({ role, content, isStreaming }) {
           showCaret && 'blinking-caret'
         )}
       >
-        {text || (showCaret ? '' : (isUser ? '' : 'Thinking…'))}
+        {text || (showCaret ? '' : isUser ? '' : 'Thinking…')}
       </div>
     </div>
   );

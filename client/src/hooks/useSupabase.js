@@ -9,8 +9,8 @@ export { supabase };
  * Mount this at the top of the app (e.g., inside App.jsx).
  */
 export function useAuthSync() {
-  const setSession = useUserStore(s => s.setSession);
-  const setLoading = useUserStore(s => s.setLoading);
+  const setSession = useUserStore((s) => s.setSession);
+  const setLoading = useUserStore((s) => s.setLoading);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,13 +29,13 @@ export function useAuthSync() {
 }
 
 export function useUser() {
-  return useUserStore(s => s.user);
+  return useUserStore((s) => s.user);
 }
 
 export function useSession() {
-  return useUserStore(s => s.session);
+  return useUserStore((s) => s.session);
 }
 
 export function useAuthLoading() {
-  return useUserStore(s => s.loading);
+  return useUserStore((s) => s.loading);
 }

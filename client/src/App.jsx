@@ -26,12 +26,16 @@ function ProtectedLayout() {
   if (!user) return <Navigate to="/" replace />;
   return (
     <div className="relative min-h-dvh flex bg-surface-base text-text-primary">
-      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 grain" style={{
-        background:
-          'radial-gradient(50rem 24rem at 88% -6%, rgba(45,212,191,0.07), transparent 58%),' +
-          'radial-gradient(42rem 24rem at -5% 4%, rgba(56,189,248,0.05), transparent 55%),' +
-          'radial-gradient(60rem 40rem at 50% 120%, rgba(45,212,191,0.035), transparent 60%)'
-      }} />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0 grain"
+        style={{
+          background:
+            'radial-gradient(50rem 24rem at 88% -6%, rgba(45,212,191,0.07), transparent 58%),' +
+            'radial-gradient(42rem 24rem at -5% 4%, rgba(56,189,248,0.05), transparent 55%),' +
+            'radial-gradient(60rem 40rem at 50% 120%, rgba(45,212,191,0.035), transparent 60%)'
+        }}
+      />
       <Sidebar />
       <div className="relative z-10 flex-1 flex flex-col min-w-0">
         <TopBar />

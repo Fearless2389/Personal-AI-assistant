@@ -54,14 +54,24 @@ export default function Chat() {
             <div className="relative h-full grid place-items-center overflow-hidden">
               <div aria-hidden className="pointer-events-none absolute inset-0 opacity-70">
                 <NeuralField />
-                <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 55% 50% at 50% 48%, transparent 26%, var(--color-surface-base) 76%)' }} />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      'radial-gradient(ellipse 55% 50% at 50% 48%, transparent 26%, var(--color-surface-base) 76%)'
+                  }}
+                />
               </div>
               <div className="relative text-center max-w-xl px-6">
                 <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-nexus-primary to-nexus-secondary grid place-items-center text-on-accent font-display font-bold text-xl signal-glow">
                   N
                 </div>
-                <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-3">How can I help, Rama?</h2>
-                <p className="text-text-secondary mb-8">Capture a thought, plan your day, or ask what you told me before — I'll route it to the right place.</p>
+                <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-3">
+                  How can I help, Rama?
+                </h2>
+                <p className="text-text-secondary mb-8">
+                  Capture a thought, plan your day, or ask what you told me before — I'll route it to the right place.
+                </p>
                 <div className="flex flex-wrap gap-2 justify-center">
                   {SUGGESTIONS.map((s) => (
                     <button
@@ -115,7 +125,9 @@ export default function Chat() {
             </div>
             <div className="mt-2 flex items-center justify-between text-[11px] text-text-muted px-1">
               <span>Gemini · Semantic memory via pgvector</span>
-              <button onClick={resetSession} className="hover:text-text-secondary">New session</button>
+              <button onClick={resetSession} className="hover:text-text-secondary">
+                New session
+              </button>
             </div>
           </div>
         </div>
@@ -134,12 +146,8 @@ export default function Chat() {
               {memory.map((m) => (
                 <Card key={m.id} className="!p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <Badge intent={m.source_table === 'notes' ? 'primary' : 'info'}>
-                      {m.source_table}
-                    </Badge>
-                    <span className="text-[11px] text-text-muted">
-                      sim {(m.similarity * 100).toFixed(0)}%
-                    </span>
+                    <Badge intent={m.source_table === 'notes' ? 'primary' : 'info'}>{m.source_table}</Badge>
+                    <span className="text-[11px] text-text-muted">sim {(m.similarity * 100).toFixed(0)}%</span>
                   </div>
                   <p className="text-xs text-text-secondary line-clamp-4">{m.content}</p>
                 </Card>
@@ -156,17 +164,23 @@ export default function Chat() {
             <p className="text-xs text-text-muted">Nexus will note any tools it invokes here.</p>
           ) : (
             <div className="space-y-2">
-              {toolResults.slice().reverse().slice(0, 12).map((r, i) => (
-                <Card key={i} className="!p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <CardTitle className="!text-sm">{r.name}</CardTitle>
-                    <span className="text-[11px] text-text-muted">{formatRelative(new Date(r.ts).toISOString())}</span>
-                  </div>
-                  <pre className="text-[11px] text-text-secondary whitespace-pre-wrap font-mono leading-snug">
-                    {JSON.stringify(r.result, null, 2)}
-                  </pre>
-                </Card>
-              ))}
+              {toolResults
+                .slice()
+                .reverse()
+                .slice(0, 12)
+                .map((r, i) => (
+                  <Card key={i} className="!p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <CardTitle className="!text-sm">{r.name}</CardTitle>
+                      <span className="text-[11px] text-text-muted">
+                        {formatRelative(new Date(r.ts).toISOString())}
+                      </span>
+                    </div>
+                    <pre className="text-[11px] text-text-secondary whitespace-pre-wrap font-mono leading-snug">
+                      {JSON.stringify(r.result, null, 2)}
+                    </pre>
+                  </Card>
+                ))}
             </div>
           )}
         </div>

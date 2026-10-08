@@ -37,7 +37,9 @@ router.post('/', async (req, res) => {
 // PATCH /api/habits/:id
 router.patch('/:id', async (req, res) => {
   const patch = { ...req.body };
-  delete patch.id; delete patch.user_id; delete patch.done_today;
+  delete patch.id;
+  delete patch.user_id;
+  delete patch.done_today;
   try {
     const { data, error } = await supabaseAdmin
       .from('habits')
@@ -56,11 +58,7 @@ router.patch('/:id', async (req, res) => {
 // DELETE /api/habits/:id
 router.delete('/:id', async (req, res) => {
   try {
-    const { error } = await supabaseAdmin
-      .from('habits')
-      .delete()
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id);
+    const { error } = await supabaseAdmin.from('habits').delete().eq('id', req.params.id).eq('user_id', req.user.id);
     if (error) throw error;
     res.status(204).end();
   } catch (err) {

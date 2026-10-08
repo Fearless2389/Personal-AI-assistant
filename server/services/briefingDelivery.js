@@ -15,10 +15,12 @@ export function renderBriefingText(payload) {
   if (Array.isArray(b.priorities) && b.priorities.length) {
     lines.push('');
     lines.push('Today:');
-    b.priorities.forEach((p, i) =>
-      lines.push(`${i + 1}. ${p.title}${p.reason ? ` — ${p.reason}` : ''}`));
+    b.priorities.forEach((p, i) => lines.push(`${i + 1}. ${p.title}${p.reason ? ` — ${p.reason}` : ''}`));
   }
-  if (b.nudge) { lines.push(''); lines.push(b.nudge); }
+  if (b.nudge) {
+    lines.push('');
+    lines.push(b.nudge);
+  }
   lines.push('');
   lines.push('— Nexus');
   return lines.join('\n');

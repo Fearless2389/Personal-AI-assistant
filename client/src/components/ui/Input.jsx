@@ -1,10 +1,7 @@
 import { forwardRef } from 'react';
 import { cn } from '../../lib/utils.js';
 
-export const Input = forwardRef(function Input(
-  { as: Tag = 'input', className, ...props },
-  ref
-) {
+export const Input = forwardRef(function Input({ as: Tag = 'input', className, ...props }, ref) {
   return (
     <Tag
       ref={ref}

@@ -23,7 +23,10 @@ async function tick() {
     .lte('scheduled_at', nowIso)
     .order('scheduled_at', { ascending: true })
     .limit(20);
-  if (error) { console.error('[scheduler] query failed:', error.message); return; }
+  if (error) {
+    console.error('[scheduler] query failed:', error.message);
+    return;
+  }
 
   for (const job of due ?? []) {
     // Atomically claim the job: flip pending → sending only if still pending.
@@ -63,7 +66,10 @@ async function briefingTick() {
     .from('user_settings')
     .select('id, timezone, briefing_hour, last_briefing_on, phone_number, whatsapp_number, sms_opt_in, whatsapp_opt_in')
     .eq('briefing_enabled', true);
-  if (error) { console.error('[briefing] query failed:', error.message); return; }
+  if (error) {
+    console.error('[briefing] query failed:', error.message);
+    return;
+  }
 
   for (const s of users ?? []) {
     const tz = s.timezone || DEFAULT_TZ;
@@ -84,7 +90,9 @@ async function briefingTick() {
     try {
       const { data: userRec } = await supabaseAdmin.auth.admin.getUserById(s.id);
       const payload = await runMorningBriefing(s.id, {
-        email: userRec?.user?.email ?? null, tz, force: true
+        email: userRec?.user?.email ?? null,
+        tz,
+        force: true
       });
       const { delivered, channel } = await deliverBriefing(s.id, payload, s);
       console.log(`[briefing] ${s.id}: ${delivered ? `sent via ${channel}` : 'generated (no channel)'}`);
@@ -97,8 +105,8 @@ async function briefingTick() {
 export function startScheduler() {
   if (timer) return;
   timer = setInterval(() => {
-    tick().catch(e => console.error('[scheduler]', e.message));
-    briefingTick().catch(e => console.error('[briefing]', e.message));
+    tick().catch((e) => console.error('[scheduler]', e.message));
+    briefingTick().catch((e) => console.error('[briefing]', e.message));
   }, POLL_MS);
   timer.unref?.();
   console.log(

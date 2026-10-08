@@ -14,7 +14,7 @@ async function recomputeProgress(userId, goalId) {
     .eq('goal_id', goalId)
     .eq('user_id', userId);
   if (!ms || ms.length === 0) return;
-  const done = ms.filter(m => m.completed).length;
+  const done = ms.filter((m) => m.completed).length;
   const pct = Math.round((done / ms.length) * 100);
   await supabaseAdmin
     .from('goals')
@@ -33,7 +33,7 @@ router.get('/', async (req, res) => {
       .order('created_at', { ascending: false });
     if (error) throw error;
 
-    const ids = (goals ?? []).map(g => g.id);
+    const ids = (goals ?? []).map((g) => g.id);
     let byGoal = {};
     if (ids.length) {
       const { data: ms } = await supabaseAdmin
@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
         .order('due_date', { ascending: true, nullsFirst: false });
       for (const m of ms ?? []) (byGoal[m.goal_id] ??= []).push(m);
     }
-    res.json({ goals: (goals ?? []).map(g => ({ ...g, milestones: byGoal[g.id] ?? [] })) });
+    res.json({ goals: (goals ?? []).map((g) => ({ ...g, milestones: byGoal[g.id] ?? [] })) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -70,7 +70,9 @@ router.post('/', async (req, res) => {
 // PATCH /api/goals/:id
 router.patch('/:id', async (req, res) => {
   const patch = { ...req.body };
-  delete patch.id; delete patch.user_id; delete patch.milestones;
+  delete patch.id;
+  delete patch.user_id;
+  delete patch.milestones;
   try {
     const { data, error } = await supabaseAdmin
       .from('goals')
@@ -89,11 +91,7 @@ router.patch('/:id', async (req, res) => {
 // DELETE /api/goals/:id (milestones cascade via FK)
 router.delete('/:id', async (req, res) => {
   try {
-    const { error } = await supabaseAdmin
-      .from('goals')
-      .delete()
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id);
+    const { error } = await supabaseAdmin.from('goals').delete().eq('id', req.params.id).eq('user_id', req.user.id);
     if (error) throw error;
     res.status(204).end();
   } catch (err) {
@@ -122,7 +120,9 @@ router.post('/:id/milestones', async (req, res) => {
 // PATCH /api/goals/:id/milestones/:mid — toggle completion or edit
 router.patch('/:id/milestones/:mid', async (req, res) => {
   const patch = { ...req.body };
-  delete patch.id; delete patch.user_id; delete patch.goal_id;
+  delete patch.id;
+  delete patch.user_id;
+  delete patch.goal_id;
   if (patch.completed !== undefined) {
     patch.completed_at = patch.completed ? new Date().toISOString() : null;
   }

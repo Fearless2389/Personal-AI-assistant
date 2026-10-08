@@ -36,7 +36,7 @@ export default function Calendar() {
       setFlash({ kind: 'error', text: ERROR_LABELS[code] ?? `Couldn't connect: ${code}` });
       navigate('/calendar', { replace: true });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -47,7 +47,9 @@ export default function Calendar() {
           <p className="text-sm text-text-secondary mt-0.5">Next 14 days from your primary Google Calendar.</p>
         </div>
         {status === 'connected' && (
-          <Button size="sm" variant="ghost" onClick={disconnect}>Disconnect</Button>
+          <Button size="sm" variant="ghost" onClick={disconnect}>
+            Disconnect
+          </Button>
         )}
       </div>
 
@@ -58,12 +60,14 @@ export default function Calendar() {
       )}
 
       {loading && (
-        <Card><div className="grid place-items-center py-12"><LoadingSpinner /></div></Card>
+        <Card>
+          <div className="grid place-items-center py-12">
+            <LoadingSpinner />
+          </div>
+        </Card>
       )}
 
-      {!loading && status === 'disconnected' && (
-        <ConnectGoogleCard onConnect={beginConnect} />
-      )}
+      {!loading && status === 'disconnected' && <ConnectGoogleCard onConnect={beginConnect} />}
 
       {!loading && status === 'broken' && (
         <div className="space-y-4">

@@ -14,28 +14,20 @@ router.get('/', async (req, res) => {
   try {
     if (q && String(q).trim().length > 0) {
       const hits = await retrieveMemory(userId, String(q), { threshold: 0.5, limit: 20 });
-      const noteHits = hits.filter(h => h.source_table === 'notes');
+      const noteHits = hits.filter((h) => h.source_table === 'notes');
       if (!noteHits.length) return res.json({ notes: [], semantic: true });
-      const ids = noteHits.map(h => h.id);
-      const { data, error } = await supabaseAdmin
-        .from('notes')
-        .select('*')
-        .eq('user_id', userId)
-        .in('id', ids);
+      const ids = noteHits.map((h) => h.id);
+      const { data, error } = await supabaseAdmin.from('notes').select('*').eq('user_id', userId).in('id', ids);
       if (error) throw error;
       // Re-order to match semantic ranking and attach similarity
-      const byId = Object.fromEntries((data ?? []).map(n => [n.id, n]));
+      const byId = Object.fromEntries((data ?? []).map((n) => [n.id, n]));
       const ordered = noteHits
-        .map(h => byId[h.id] ? { ...byId[h.id], similarity: h.similarity } : null)
+        .map((h) => (byId[h.id] ? { ...byId[h.id], similarity: h.similarity } : null))
         .filter(Boolean);
       return res.json({ notes: ordered, semantic: true });
     }
 
-    let query = supabaseAdmin
-      .from('notes')
-      .select('*')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
+    let query = supabaseAdmin.from('notes').select('*').eq('user_id', userId).order('updated_at', { ascending: false });
     if (tag) query = query.contains('tags', [String(tag)]);
 
     const { data, error } = await query;
@@ -111,11 +103,7 @@ router.patch('/:id', async (req, res) => {
 // DELETE /api/notes/:id
 router.delete('/:id', async (req, res) => {
   try {
-    const { error } = await supabaseAdmin
-      .from('notes')
-      .delete()
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id);
+    const { error } = await supabaseAdmin.from('notes').delete().eq('id', req.params.id).eq('user_id', req.user.id);
     if (error) throw error;
     res.status(204).end();
   } catch (err) {
