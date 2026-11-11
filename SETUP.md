@@ -25,6 +25,13 @@ Supabase and Google Cloud consoles.
    - `supabase/migrations/001_initial_schema.sql`
    - `supabase/migrations/002_calendar_tokens.sql`
    - `supabase/migrations/003_calendar_memory_and_sms.sql`
+   - `supabase/migrations/004_briefing_and_tz.sql` — your timezone + daily briefing schedule
+   - `supabase/migrations/005_applications_and_nudges.sql` — placement tracker + nudge snoozes
+
+   > **Free-tier gotcha:** Supabase pauses a project after ~7 days with no activity. If the app
+   > suddenly can't log in and the server logs `fetch failed`, open the dashboard and click
+   > **Restore project**. Keeping the server running prevents it (its scheduler queries every 30s).
+
 4. **Get your keys** — Settings → API. You'll copy three values in section 4:
    - Project URL
    - `anon` public key
