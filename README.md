@@ -8,7 +8,7 @@ memory. Built solo by Rama on a strict free-tier-only stack.
 > Chat, Notes, Tasks, Calendar, Habits, Goals, Focus, Weekly Review, Analytics, Settings, SMS
 > reminders). SMS delivery and WhatsApp are optional and need your own Twilio/Meta keys.
 
-**→ To run it, follow [`SETUP.md`](./SETUP.md).** · **Product spec: [`docs/PRD.md`](./docs/PRD.md).**
+**→ To run it, follow [`SETUP.md`](./SETUP.md).** · **Product spec: [`docs/PRD.md`](./docs/PRD.md).** · **Future scope: [`docs/ROADMAP.md`](./docs/ROADMAP.md).**
 
 ## What works
 
