@@ -200,8 +200,7 @@ export async function listEvents(userId, { timeMin, timeMax } = {}) {
 }
 
 /**
- * Convenience: today 00:00 → 23:59 (server local time).
- * User-timezone-aware bucketing is deferred to a later phase.
+ * Convenience: today 00:00 → 23:59 in the user's timezone (not the server's).
  */
 export async function listTodaysEvents(userId, tz = DEFAULT_TZ) {
   const { startIso, endIso } = dayRangeUtc(tz); // the user's local day, not the server's

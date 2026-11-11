@@ -14,6 +14,7 @@ import { supabaseAdmin } from '../supabase.js';
 import { getStructuredModel } from '../gemini.js';
 import * as calendarService from '../calendarService.js';
 import { DEFAULT_TZ, dayRangeUtc, hourInTz, formatInTz } from '../time.js';
+import { ACTIVE_STAGES } from '../applicationService.js';
 
 // Strict JSON contract the model must return. Same OBJECT/STRING/ARRAY vocabulary
 // as the tool declarations in gemini.js.
@@ -85,6 +86,18 @@ async function gather(userId, email, tz = DEFAULT_TZ) {
     return d >= now && d <= endToday;
   });
 
+  // Placement next-steps that are overdue or land in the next 48h. Missing table
+  // (migration 005 not run yet) just means none.
+  const { data: appRows, error: appErr } = await supabaseAdmin
+    .from('applications')
+    .select('company, role, stage, next_step, next_deadline')
+    .eq('user_id', userId)
+    .in('stage', ACTIVE_STAGES)
+    .not('next_deadline', 'is', null)
+    .lte('next_deadline', new Date(now.getTime() + 48 * 3600_000).toISOString())
+    .order('next_deadline', { ascending: true });
+  const appDeadlines = appErr ? [] : (appRows ?? []);
+
   return {
     now,
     tz,
@@ -94,9 +107,11 @@ async function gather(userId, email, tz = DEFAULT_TZ) {
     tasks,
     overdue,
     dueToday,
+    appDeadlines,
     stats: {
       overdue: overdue.length,
       dueToday: dueToday.length,
+      appDeadlines: appDeadlines.length,
       todo: tasks.filter((t) => t.status === 'todo').length,
       inProgress: tasks.filter((t) => t.status === 'in_progress').length,
       events: events.length
@@ -122,9 +137,20 @@ function renderContext(ctx) {
     : '(nothing on the calendar)';
   const overdue = ctx.overdue.length ? ctx.overdue.map((t) => `- ${t.title} [${t.priority}]`).join('\n') : '(none)';
   const dueToday = ctx.dueToday.length ? ctx.dueToday.map((t) => `- ${t.title} [${t.priority}]`).join('\n') : '(none)';
+  const placements = ctx.appDeadlines.length
+    ? ctx.appDeadlines
+        .map((a) => {
+          const late = new Date(a.next_deadline) < ctx.now ? 'OVERDUE ' : '';
+          return `- ${late}${formatInTz(ctx.tz, new Date(a.next_deadline))}: ${a.company}${a.role ? ` (${a.role})` : ''} — ${a.next_step ?? a.stage}`;
+        })
+        .join('\n')
+    : '(none)';
 
   return `Time of day: ${ctx.part}
 Date: ${formatInTz(ctx.tz, ctx.now)}
+
+PLACEMENT DEADLINES (overdue or within 48h — these usually matter most):
+${placements}
 
 CALENDAR TODAY:
 ${events}
@@ -146,13 +172,20 @@ function fallbackBriefing(ctx) {
   if (ctx.events.length) bits.push(`${ctx.events.length} event${ctx.events.length > 1 ? 's' : ''}`);
   if (ctx.overdue.length) bits.push(`${ctx.overdue.length} overdue`);
   if (ctx.dueToday.length) bits.push(`${ctx.dueToday.length} due today`);
+  if (ctx.appDeadlines.length)
+    bits.push(`${ctx.appDeadlines.length} placement deadline${ctx.appDeadlines.length > 1 ? 's' : ''}`);
   const headline = bits.length
     ? `You have ${bits.join(', ')} on your plate.`
     : 'A clear slate — a good day to get ahead on something.';
-  const priorities = [...ctx.overdue, ...ctx.dueToday].slice(0, 3).map((t) => ({
+  const placementItems = ctx.appDeadlines.map((a) => ({
+    title: `${a.company} — ${a.next_step ?? a.stage}`,
+    reason: new Date(a.next_deadline) < ctx.now ? 'Placement step is overdue.' : 'Placement deadline within 48h.'
+  }));
+  const taskItems = [...ctx.overdue, ...ctx.dueToday].map((t) => ({
     title: t.title,
     reason: ctx.overdue.includes(t) ? 'Overdue — worth clearing first.' : 'Due today.'
   }));
+  const priorities = [...placementItems, ...taskItems].slice(0, 3);
   const nudge = priorities.length
     ? 'Start with the top item while your focus is fresh.'
     : 'Ask Nexus in chat to plan something for today.';
@@ -182,7 +215,8 @@ export async function runMorningBriefing(userId, { email, tz, force = false } = 
   let generated = false;
   try {
     const system = `You are Nexus, ${ctx.userName ?? 'the user'}'s personal AI second brain.
-Write a short, energizing ${ctx.part} briefing grounded in their REAL tasks and events below.
+Write a short, energizing ${ctx.part} briefing grounded in their REAL tasks, placement deadlines and events below.
+They are in placement season: an OA or interview in the next 48h almost always outranks routine tasks.
 Reference specifics — don't be generic. Choose the 3 things that actually matter most today.
 Warm but concise. No filler, no motivational-poster clichés.`;
     const model = getStructuredModel(system, BRIEFING_SCHEMA);

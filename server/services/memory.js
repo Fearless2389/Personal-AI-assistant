@@ -43,29 +43,49 @@ export async function retrieveMemory(userId, query, { threshold = 0.75, limit = 
   }
 }
 
+// "Thu, 9 Oct, 6:00 PM" in the user's timezone — readable for the model and the user.
+function whenLabel(iso, tz, allDay) {
+  try {
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: tz,
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      ...(allDay ? {} : { hour: 'numeric', minute: '2-digit', hour12: true })
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
 /**
  * Build the Gemini system prompt with persona + retrieved context.
- * Pass empty arrays for sections that have no data yet (Phase 1 events/habits).
+ * `upcoming` is the agenda.listUpcoming() output (tasks, application next-steps,
+ * events) — empty arrays render as "(none)".
  */
 export function buildSystemPrompt({
   personaName = 'Nexus',
   personaStyle = 'friendly',
   memoryContext = [],
-  todaysEvents = [],
-  overdueTasks = [],
+  upcoming = [],
   todaysHabits = [],
+  tz = 'Asia/Kolkata',
   currentDateTime = new Date().toISOString()
 } = {}) {
   const memoryLines = memoryContext.length
     ? memoryContext.map((m) => `- [${m.source_table}] ${m.content}`).join('\n')
     : '(no relevant memories yet)';
-  const eventsLines = todaysEvents.length
-    ? todaysEvents.map((e) => `- ${e.start_time}: ${e.title}`).join('\n')
-    : '(none yet)';
-  const overdueLines = overdueTasks.length
-    ? overdueTasks.map((t) => `- ${t.title} (due ${t.due_date})`).join('\n')
-    : '(none)';
-  const habitsLines = todaysHabits.length ? todaysHabits.map((h) => `- ${h.name}`).join('\n') : '(none yet)';
+  const upcomingLines = upcoming.length
+    ? upcoming
+        .slice(0, 15)
+        .map(
+          (i) =>
+            `- ${i.overdue ? 'OVERDUE ' : ''}${whenLabel(i.at, tz, i.all_day)} [${i.kind}] ${i.title}` +
+            (i.detail ? ` (${i.detail})` : '')
+        )
+        .join('\n')
+    : '(nothing with a deadline)';
+  const habitsLines = todaysHabits.length ? todaysHabits.map((h) => `- ${h.name}`).join('\n') : '(none)';
 
   const styleNote =
     {
@@ -86,22 +106,26 @@ Right now it is ${currentDateTime}. Compute every date and time from this — ne
 RELEVANT MEMORIES (retrieved from past notes and chats):
 ${memoryLines}
 
-ON RAMA'S PLATE TODAY
-Events:
-${eventsLines}
-Overdue tasks:
-${overdueLines}
-Habits still open:
+NEXT 7 DAYS (authoritative — straight from the database, overdue first):
+${upcomingLines}
+
+Habits still open today:
 ${habitsLines}
 
+Rama is in placement season (on-campus drives + off-campus applications). Treat that as the default context.
+
 HOW YOU ACT (tools)
-- Anything with a DATE — a deadline, application, OA, interview, submission — call create_task with a real ISO due_date. That is the ONLY way it surfaces in "due today", reminders, and the morning briefing. Never bury a dated thing in a note.
+- Anything about a job/internship/placement application — applied, OA received, interview scheduled, offer, rejection, or a company's deadline — call track_application. It updates the existing card if there is one, so use it for every status change. Put the dated next thing in next_step + next_deadline. Do NOT also create a task for it.
+- Any other dated thing (assignment, exam, form, errand) — call create_task with a real ISO due_date. Never bury a dated thing in a note.
   When a deadline is time-critical, offer to also schedule_reminder for it.
+- "What's due / coming up / this week" — answer from NEXT 7 DAYS above; for a wider window call list_upcoming.
+- "Which companies / what's pending / where am I with X" — call list_applications (filter by stage or on/off-campus).
 - A durable fact/decision/reference with no date ("I decided X", "my referral at Acme is Y") — call create_note.
+- "What did I say about…" / recalling a past conversation or note — call search_memory.
 - "Remind me at <time>" — call schedule_reminder.
 - A meeting or event to put on the calendar — call create_calendar_event.
-- "What did I say about…" / "what's due…" / recalling the past — call search_memory, and also use the context above.
 - "I did <habit>" — call log_habit.
+- If track_application says the company is ambiguous, ask which role in one short line.
 
 Act on clear intent instead of asking permission; then confirm briefly what you saved and when it's due. If a date is genuinely ambiguous, ask ONE short question rather than guessing.`;
 }

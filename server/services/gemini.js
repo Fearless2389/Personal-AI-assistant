@@ -5,8 +5,9 @@ if (!apiKey) console.warn('[gemini] Missing GEMINI_API_KEY in environment.');
 
 const genAI = new GoogleGenerativeAI(apiKey ?? '');
 
-// Function/tool declarations exposed to Gemini. Phase 1 wires all six so the model
-// knows the surface area; Phase 2/3 fill in the handlers for reminders/calendar/habits.
+// Function/tool declarations exposed to Gemini. Handlers live in routes/chat.js →
+// handleToolCall. The last three are deterministic (DB queries, no embeddings) so
+// date and pipeline questions never depend on fuzzy semantic recall.
 export const tools = [
   {
     functionDeclarations: [
@@ -87,6 +88,57 @@ export const tools = [
             habit_name: { type: 'STRING' }
           },
           required: ['habit_name']
+        }
+      },
+      {
+        name: 'track_application',
+        description:
+          'Create or update a job/internship/placement application. If one already exists for the company ' +
+          '(and role), it is updated in place — use this for both "applied to X" and "got the X OA/interview/offer".',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            company: { type: 'STRING' },
+            role: { type: 'STRING', description: 'e.g. "SWE Intern", "SDE-1"' },
+            stage: {
+              type: 'STRING',
+              enum: ['wishlist', 'applied', 'oa', 'interview', 'offer', 'rejected', 'withdrawn']
+            },
+            channel: { type: 'STRING', enum: ['on_campus', 'off_campus'] },
+            next_step: { type: 'STRING', description: 'The next thing due, e.g. "Online assessment", "Round 2"' },
+            next_deadline: { type: 'STRING', description: 'ISO 8601 datetime when next_step is due' },
+            link: { type: 'STRING' },
+            notes: { type: 'STRING' }
+          },
+          required: ['company']
+        }
+      },
+      {
+        name: 'list_applications',
+        description: "List Rama's applications, optionally filtered by stage or on/off-campus.",
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            stage: {
+              type: 'STRING',
+              enum: ['wishlist', 'applied', 'oa', 'interview', 'offer', 'rejected', 'withdrawn']
+            },
+            channel: { type: 'STRING', enum: ['on_campus', 'off_campus'] },
+            active_only: { type: 'BOOLEAN', description: 'Exclude rejected/withdrawn. Defaults to true.' }
+          }
+        }
+      },
+      {
+        name: 'list_upcoming',
+        description:
+          'Everything with a deadline in the next N days — tasks, application next-steps and calendar events — ' +
+          'sorted by date, including overdue items. Use for "what is due", "what is coming up", "this week".',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            days_ahead: { type: 'NUMBER', description: 'Window in days from today. Default 7.' },
+            include_overdue: { type: 'BOOLEAN', description: 'Default true.' }
+          }
         }
       }
     ]

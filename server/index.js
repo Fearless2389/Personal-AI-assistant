@@ -17,6 +17,9 @@ import remindersRouter from './routes/reminders.js';
 import webhooksRouter from './routes/webhooks.js';
 import analyticsRouter from './routes/analytics.js';
 import settingsRouter from './routes/settings.js';
+import applicationsRouter from './routes/applications.js';
+import agendaRouter from './routes/agenda.js';
+import nudgesRouter from './routes/nudges.js';
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 3001);
@@ -51,6 +54,9 @@ app.use('/api/reminders', remindersRouter);
 app.use('/api/webhooks', webhooksRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/applications', applicationsRouter);
+app.use('/api/agenda', agendaRouter);
+app.use('/api/nudges', nudgesRouter);
 
 // 404 for unmatched /api/*
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));

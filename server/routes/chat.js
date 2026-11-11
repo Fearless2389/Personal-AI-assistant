@@ -6,9 +6,29 @@ import { embedAndStore, retrieveMemory, buildSystemPrompt } from '../services/me
 import * as calendarService from '../services/calendarService.js';
 import { scheduleReminder } from '../services/reminderService.js';
 import { logHabitByName, listHabitsWithToday } from '../services/habitService.js';
+import { trackApplication, listApplications, summarize } from '../services/applicationService.js';
+import { listUpcoming } from '../services/agenda.js';
 import { DEFAULT_TZ, formatInTz } from '../services/time.js';
 
 const router = Router();
+
+// Cosine-similarity floor for semantic recall. gemini-embedding-001 scores real
+// matches around 0.5–0.8, so 0.6 silently dropped valid hits (measured).
+const MEMORY_THRESHOLD = 0.5;
+// How many rounds of tool calls one message may chain (e.g. look up → then update).
+const MAX_TOOL_ROUNDS = 3;
+
+/** Turn raw Gemini/SDK failures into something a person can act on. */
+function friendlyAiError(err) {
+  const msg = String(err?.message ?? '');
+  if (/429|quota|rate.?limit|resource.?exhausted/i.test(msg)) {
+    return "Gemini's free quota is used up for the moment. Try again in a minute.";
+  }
+  if (/API key|permission|403|401/i.test(msg))
+    return 'The Gemini API key was rejected. Check GEMINI_API_KEY in server/.env.';
+  if (/fetch failed|ENOTFOUND|ECONNRESET|network/i.test(msg)) return "Couldn't reach Gemini. Check your connection.";
+  return 'Something went wrong generating a reply. Try again.';
+}
 
 /**
  * Stream a single SSE event with the standard `data: <json>\n\n` framing.
@@ -18,10 +38,10 @@ function sse(res, payload) {
 }
 
 /**
- * Tool dispatcher. Phase 1 implements create_note / create_task / search_memory fully;
- * the other three return a graceful "ships later" message so chat never crashes.
+ * Tool dispatcher. Every handler returns a plain result object (never throws) so a
+ * failing tool becomes something the model can explain instead of a broken stream.
  */
-async function handleToolCall(name, args, userId) {
+async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {}) {
   try {
     if (name === 'create_note') {
       const { title = null, content, tags = [] } = args ?? {};
@@ -49,7 +69,7 @@ async function handleToolCall(name, args, userId) {
 
     if (name === 'search_memory') {
       const { query } = args ?? {};
-      const results = await retrieveMemory(userId, String(query ?? ''), { threshold: 0.6, limit: 5 });
+      const results = await retrieveMemory(userId, String(query ?? ''), { threshold: MEMORY_THRESHOLD, limit: 5 });
       return { ok: true, results };
     }
 
@@ -129,6 +149,22 @@ async function handleToolCall(name, args, userId) {
       return result;
     }
 
+    if (name === 'track_application') {
+      return await trackApplication(userId, args ?? {});
+    }
+
+    if (name === 'list_applications') {
+      const { stage, channel, active_only = true } = args ?? {};
+      const apps = await listApplications(userId, { stage, channel, activeOnly: active_only !== false });
+      return { ok: true, count: apps.length, applications: apps.map(summarize) };
+    }
+
+    if (name === 'list_upcoming') {
+      const { days_ahead = 7, include_overdue = true } = args ?? {};
+      const items = await listUpcoming(userId, { daysAhead: days_ahead, includeOverdue: include_overdue, tz });
+      return { ok: true, timezone: tz, count: items.length, items };
+    }
+
     return { ok: false, message: `Unknown tool: ${name}` };
   } catch (err) {
     console.error('[chat] tool', name, 'failed:', err.message);
@@ -168,7 +204,7 @@ router.post('/', requireAuth, async (req, res) => {
     if (userErr) throw userErr;
 
     // 2) Retrieve top-K relevant memories
-    const memoryContext = await retrieveMemory(userId, message, { threshold: 0.6, limit: 5 });
+    const memoryContext = await retrieveMemory(userId, message, { threshold: MEMORY_THRESHOLD, limit: 5 });
     if (memoryContext.length) sse(res, { type: 'memory', items: memoryContext });
 
     // 3) Load this session's recent history (exclude the just-inserted user row)
@@ -191,59 +227,36 @@ router.post('/', requireAuth, async (req, res) => {
 
     // 4b) Gather live context for the system prompt — all best-effort, all
     //     independently guarded so a single failure never breaks chat.
-    const nowIso = new Date().toISOString();
-    const [todaysEvents, overdueTasks, todaysHabits] = await Promise.all([
-      // Calendar (only if connected)
-      (async () => {
-        if (settings?.google_connection_status !== 'connected') return [];
-        try {
-          return await calendarService.listTodaysEvents(userId, tz);
-        } catch (err) {
-          console.warn(`[chat:${req.id}] events fetch failed:`, err.message);
-          return [];
-        }
-      })(),
-      // Overdue tasks
-      (async () => {
-        try {
-          const { data } = await supabaseAdmin
-            .from('tasks')
-            .select('title, due_date')
-            .eq('user_id', userId)
-            .neq('status', 'done')
-            .lt('due_date', nowIso)
-            .order('due_date', { ascending: true })
-            .limit(5);
-          return data ?? [];
-        } catch {
-          return [];
-        }
-      })(),
+    const [upcoming, todaysHabits] = await Promise.all([
+      // Next 7 days of deadlines (tasks, application next-steps, events), overdue included
+      listUpcoming(userId, {
+        daysAhead: 7,
+        tz,
+        includeEvents: settings?.google_connection_status === 'connected'
+      }).catch((err) => {
+        console.warn(`[chat:${req.id}] agenda fetch failed:`, err.message);
+        return [];
+      }),
       // Habits still pending today
-      (async () => {
-        try {
-          const habits = await listHabitsWithToday(userId);
-          return habits.filter((h) => !h.done_today).map((h) => ({ name: h.name }));
-        } catch {
-          return [];
-        }
-      })()
+      listHabitsWithToday(userId)
+        .then((habits) => habits.filter((h) => !h.done_today).map((h) => ({ name: h.name })))
+        .catch(() => [])
     ]);
 
     const systemInstruction = buildSystemPrompt({
       personaName: settings?.persona_name ?? 'Nexus',
       personaStyle: settings?.persona_style ?? 'friendly',
       memoryContext,
-      todaysEvents,
-      overdueTasks,
+      upcoming,
       todaysHabits,
+      tz,
       currentDateTime: formatInTz(tz)
     });
 
     const model = getChatModel(systemInstruction);
 
     // 5) Build Gemini contents: prior turns + the new user message
-    const contents = [
+    let contents = [
       ...(history ?? []).map((h) => ({
         role: h.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: h.content }]
@@ -251,43 +264,33 @@ router.post('/', requireAuth, async (req, res) => {
       { role: 'user', parts: [{ text: message }] }
     ];
 
-    // 6) First pass: model decides whether to call tools or just answer
-    let firstStream = await model.generateContentStream({ contents });
+    // 6) Generate → run any tool calls → feed results back → repeat, up to
+    //    MAX_TOOL_ROUNDS, so one message can chain steps (look up, then update).
     let assistantText = '';
-    for await (const chunk of firstStream.stream) {
-      const t = chunk.text();
-      if (t) {
-        assistantText += t;
-        sse(res, { type: 'text', delta: t });
-      }
-    }
-    const firstFinal = await firstStream.response;
-    const fnCalls = (typeof firstFinal.functionCalls === 'function' ? firstFinal.functionCalls() : null) ?? [];
-
-    // 7) If the model invoked tools, execute them and run a follow-up turn
-    //    so it can speak naturally about the result.
-    if (fnCalls.length) {
-      const fnResponseParts = [];
-      for (const call of fnCalls) {
-        const result = await handleToolCall(call.name, call.args ?? {}, userId);
-        sse(res, { type: 'tool_result', name: call.name, args: call.args ?? {}, result });
-        fnResponseParts.push({ functionResponse: { name: call.name, response: { result } } });
-      }
-
-      const followUpContents = [
-        ...contents,
-        { role: 'model', parts: fnCalls.map((c) => ({ functionCall: c })) },
-        { role: 'user', parts: fnResponseParts }
-      ];
-
-      const secondStream = await model.generateContentStream({ contents: followUpContents });
-      for await (const chunk of secondStream.stream) {
+    for (let round = 0; ; round++) {
+      const stream = await model.generateContentStream({ contents });
+      for await (const chunk of stream.stream) {
         const t = chunk.text();
         if (t) {
           assistantText += t;
           sse(res, { type: 'text', delta: t });
         }
       }
+      const final = await stream.response;
+      const calls = (typeof final.functionCalls === 'function' ? final.functionCalls() : null) ?? [];
+      if (!calls.length || round >= MAX_TOOL_ROUNDS) break;
+
+      const responseParts = [];
+      for (const call of calls) {
+        const result = await handleToolCall(call.name, call.args ?? {}, userId, { tz });
+        sse(res, { type: 'tool_result', name: call.name, args: call.args ?? {}, result });
+        responseParts.push({ functionResponse: { name: call.name, response: { result } } });
+      }
+      contents = [
+        ...contents,
+        { role: 'model', parts: calls.map((c) => ({ functionCall: c })) },
+        { role: 'user', parts: responseParts }
+      ];
     }
 
     // 8) Done event, end response
@@ -297,6 +300,10 @@ router.post('/', requireAuth, async (req, res) => {
     // 9) Async: persist assistant message + embed both user/assistant rows
     setImmediate(async () => {
       try {
+        if (!assistantText.trim()) {
+          embedAndStore(userId, 'conversations', userRow.id, message);
+          return;
+        }
         const { data: aRow, error: aErr } = await supabaseAdmin
           .from('conversations')
           .insert({ user_id: userId, session_id: sessionId, role: 'assistant', content: assistantText })
@@ -315,7 +322,7 @@ router.post('/', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('[chat] stream failed:', err);
     try {
-      sse(res, { type: 'error', message: err?.message ?? 'Internal error' });
+      sse(res, { type: 'error', message: friendlyAiError(err) });
       res.end();
     } catch {
       /* connection already closed */
