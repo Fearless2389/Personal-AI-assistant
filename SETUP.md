@@ -37,11 +37,11 @@ Supabase and Google Cloud consoles.
 3. **OAuth consent screen** → External → fill app name + your email. Under **Scopes**, add:
    - `.../auth/calendar.events`
    - `.../auth/calendar.readonly`
-   Under **Test users**, add your own Gmail (required while the app is "Testing").
+     Under **Test users**, add your own Gmail (required while the app is "Testing").
 4. **Credentials → Create Credentials → OAuth client ID → Web application.** Add **Authorized
    redirect URIs**:
-   - `http://localhost:3001/api/calendar/callback`  ← Nexus Calendar
-   - the redirect URI Supabase shows you in the next step  ← Google sign-in
+   - `http://localhost:3001/api/calendar/callback` ← Nexus Calendar
+   - the redirect URI Supabase shows you in the next step ← Google sign-in
 5. Copy the **Client ID** and **Client secret** (used in sections 3 + 4).
 
 ## 3. Enable Google sign-in in Supabase — REQUIRED
@@ -111,6 +111,7 @@ Open <http://localhost:5173>, sign in with Google, land on `/chat`. Go to **Cale
 Connect Google Calendar to enable event features.
 
 **Smoke test without logging in:**
+
 ```bash
 curl http://localhost:3001/api/health        # {"ok":true,...}
 ```

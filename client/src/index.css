@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   /* Synapse — electric mint on deep ink */
@@ -32,7 +32,9 @@
 }
 
 @layer base {
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: 100%;
     margin: 0;
   }
@@ -46,10 +48,20 @@
   ::selection {
     background: color-mix(in oklch, var(--color-nexus-primary) 30%, transparent);
   }
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-thumb { background: var(--color-surface-3); border-radius: 8px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--color-surface-border); }
-  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-surface-border);
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
 @layer utilities {
@@ -64,8 +76,12 @@
     animation: shimmer 1.4s ease-in-out infinite;
   }
   @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
   }
 
   .blinking-caret::after {
@@ -75,15 +91,26 @@
     animation: caret 1s steps(1) infinite;
   }
   @keyframes caret {
-    50% { opacity: 0; }
+    50% {
+      opacity: 0;
+    }
   }
 
-  .text-balance { text-wrap: balance; }
+  .text-balance {
+    text-wrap: balance;
+  }
 
   /* Synapse atmosphere helpers */
-  .signal-glow { box-shadow: 0 0 24px -4px color-mix(in oklch, var(--color-signal) 60%, transparent); }
+  .signal-glow {
+    box-shadow: 0 0 24px -4px color-mix(in oklch, var(--color-signal) 60%, transparent);
+  }
   .grain::before {
-    content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0.045;
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.045;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 }
