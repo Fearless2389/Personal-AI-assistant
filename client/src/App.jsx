@@ -10,7 +10,9 @@ import Landing from './pages/Landing.jsx';
 import Chat from './pages/Chat.jsx';
 import Notes from './pages/Notes.jsx';
 import Tasks from './pages/Tasks.jsx';
-import Dashboard from './pages/Dashboard.jsx';
+import Today from './pages/Today.jsx';
+import Applications from './pages/Applications.jsx';
+import { CommandBar } from './components/capture/CommandBar.jsx';
 import Calendar from './pages/Calendar.jsx';
 import Habits from './pages/Habits.jsx';
 import Goals from './pages/Goals.jsx';
@@ -41,6 +43,7 @@ function ProtectedLayout() {
         <TopBar />
         <AnimatedOutlet />
         <MobileNav />
+        <CommandBar />
       </div>
     </div>
   );
@@ -62,7 +65,8 @@ const router = createBrowserRouter([
   {
     element: <ProtectedLayout />,
     children: [
-      { path: '/dashboard', element: <Dashboard /> },
+      { path: '/dashboard', element: <Today /> },
+      { path: '/applications', element: <Applications /> },
       { path: '/chat', element: <Chat /> },
       { path: '/notes', element: <Notes /> },
       { path: '/tasks', element: <Tasks /> },

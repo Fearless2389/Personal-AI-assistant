@@ -32,6 +32,11 @@
 }
 
 @layer base {
+  /* Dark-only app: tell the browser so native controls (date pickers,
+     scrollbars, select menus) render dark instead of black-on-dark. */
+  :root {
+    color-scheme: dark;
+  }
   html,
   body,
   #root {
@@ -93,6 +98,16 @@
   @keyframes caret {
     50% {
       opacity: 0;
+    }
+  }
+
+  /* ⌘K capture bar "working" sweep */
+  @keyframes capture-scan {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(300%);
     }
   }
 

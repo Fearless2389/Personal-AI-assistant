@@ -68,6 +68,23 @@ export const dashboardApi = {
   get: ({ refresh = false } = {}) => request('/api/dashboard', { query: refresh ? { refresh: 1 } : undefined })
 };
 
+export const applicationsApi = {
+  list: (filters = {}) => request('/api/applications', { query: filters }),
+  create: (payload) => request('/api/applications', { method: 'POST', body: payload }),
+  update: (id, patch) => request(`/api/applications/${id}`, { method: 'PATCH', body: patch }),
+  remove: (id) => request(`/api/applications/${id}`, { method: 'DELETE' })
+};
+
+export const agendaApi = {
+  get: ({ days = 7 } = {}) => request('/api/agenda', { query: { days } })
+};
+
+export const nudgesApi = {
+  list: () => request('/api/nudges'),
+  dismiss: (key, { snoozeHours } = {}) =>
+    request('/api/nudges/dismiss', { method: 'POST', body: { key, snooze_hours: snoozeHours } })
+};
+
 export const habitsApi = {
   list: () => request('/api/habits'),
   create: (payload) => request('/api/habits', { method: 'POST', body: payload }),

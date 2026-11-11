@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { streamChat } from '../lib/api.js';
 import { useChatStore } from '../store/useChatStore.js';
+import { useRefreshStore, keysForTool } from '../store/useRefreshStore.js';
 
 export function useStreamingChat() {
   const ctrlRef = useRef(null);
@@ -21,8 +22,10 @@ export function useStreamingChat() {
         onChunk: (evt) => {
           if (evt.type === 'text') appendDelta(evt.delta ?? '');
           else if (evt.type === 'memory') setMemory(evt.items ?? []);
-          else if (evt.type === 'tool_result') pushToolResult({ name: evt.name, args: evt.args, result: evt.result });
-          else if (evt.type === 'done') finishStreaming();
+          else if (evt.type === 'tool_result') {
+            pushToolResult({ name: evt.name, args: evt.args, result: evt.result });
+            if (evt.result?.ok !== false) useRefreshStore.getState().bump(...keysForTool(evt.name));
+          } else if (evt.type === 'done') finishStreaming();
           else if (evt.type === 'error') {
             appendDelta(`\n\n[error] ${evt.message}`);
             finishStreaming();

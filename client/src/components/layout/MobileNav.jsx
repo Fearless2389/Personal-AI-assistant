@@ -1,12 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, ListTodo, StickyNote, MoreHorizontal } from 'lucide-react';
+import { Sun, Briefcase, MessageSquare, ListTodo, MoreHorizontal } from 'lucide-react';
 import { cn } from '../../lib/utils.js';
 
 const ITEMS = [
-  { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { to: '/dashboard', label: 'Today', icon: Sun },
+  { to: '/applications', label: 'Apps', icon: Briefcase },
   { to: '/chat', label: 'Chat', icon: MessageSquare },
   { to: '/tasks', label: 'Tasks', icon: ListTodo },
-  { to: '/notes', label: 'Notes', icon: StickyNote },
   { to: '/settings', label: 'More', icon: MoreHorizontal }
 ];
 

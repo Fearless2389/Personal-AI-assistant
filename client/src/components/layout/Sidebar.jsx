@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard,
+  Sun,
+  Briefcase,
   MessageSquare,
   StickyNote,
   ListTodo,
@@ -15,7 +16,8 @@ import {
 import { cn } from '../../lib/utils.js';
 
 const ITEMS = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/dashboard', label: 'Today', icon: Sun },
+  { to: '/applications', label: 'Applications', icon: Briefcase },
   { to: '/chat', label: 'Chat', icon: MessageSquare },
   { to: '/notes', label: 'Notes', icon: StickyNote },
   { to: '/tasks', label: 'Tasks', icon: ListTodo },
@@ -33,7 +35,7 @@ export function Sidebar() {
     <aside className="hidden md:flex md:flex-col w-60 shrink-0 h-screen sticky top-0 bg-surface-1 border-r border-surface-border">
       <div className="px-5 py-5 border-b border-surface-border">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-nexus-primary to-nexus-secondary grid place-items-center font-display font-bold text-white shadow-lg shadow-nexus-primary/20">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-nexus-primary to-nexus-secondary grid place-items-center font-display font-bold text-on-accent shadow-lg shadow-nexus-primary/20">
             N
           </div>
           <div>

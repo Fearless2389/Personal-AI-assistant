@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { summarizeTool } from '../lib/toolSummary.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChatStore } from '../store/useChatStore.js';
 import { useStreamingChat } from '../hooks/useStreamingChat.js';
@@ -6,23 +8,36 @@ import { ArrowUp } from 'lucide-react';
 import { ChatBubble } from '../components/shared/ChatBubble.jsx';
 import { VoiceButton } from '../components/shared/VoiceButton.jsx';
 import { NeuralField } from '../components/shared/NeuralField.jsx';
-import { Card, CardTitle } from '../components/ui/Card.jsx';
+import { Card } from '../components/ui/Card.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
-import { Input } from '../components/ui/Input.jsx';
 import { formatRelative } from '../lib/utils.js';
 
 const SUGGESTIONS = [
-  'Save a note about my Comp Finance midterm next Thursday',
-  'Remind me to email Prof Rao tomorrow at 9am',
-  'What did I decide about the API design?',
-  'Add a high-priority task to tighten the lit review'
+  'Applied to Atlassian SWE intern off-campus, referral from Priya',
+  "What's due this week?",
+  'Where am I with my off-campus applications?',
+  'Comp Fin midterm next Thursday 10am'
 ];
 
 export default function Chat() {
   const { messages, isStreaming, memory, toolResults, resetSession } = useChatStore();
   const { send } = useStreamingChat();
-  const [draft, setDraft] = useState('');
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Prompts handed over from elsewhere (e.g. a nudge's "Prep plan") arrive via
+  // router state: { draft, autoSend }. Non-auto drafts just pre-fill the composer.
+  const [draft, setDraft] = useState(() => (location.state?.autoSend ? '' : (location.state?.draft ?? '')));
   const scrollRef = useRef(null);
+  const handoffRef = useRef(null);
+
+  // Send an auto-send handoff once, then clear router state so a refresh won't resend.
+  useEffect(() => {
+    const { draft: incoming, autoSend } = location.state ?? {};
+    if (!incoming || handoffRef.current === location.key) return;
+    handoffRef.current = location.key;
+    navigate(location.pathname, { replace: true, state: null });
+    if (autoSend && !isStreaming) send(incoming);
+  }, [location, navigate, send, isStreaming]);
 
   // Auto-scroll on new content
   useEffect(() => {
@@ -163,25 +178,30 @@ export default function Chat() {
           {toolResults.length === 0 ? (
             <p className="text-xs text-text-muted">Nexus will note any tools it invokes here.</p>
           ) : (
-            <div className="space-y-2">
+            <ul className="space-y-2">
               {toolResults
                 .slice()
                 .reverse()
                 .slice(0, 12)
-                .map((r, i) => (
-                  <Card key={i} className="!p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <CardTitle className="!text-sm">{r.name}</CardTitle>
-                      <span className="text-[11px] text-text-muted">
-                        {formatRelative(new Date(r.ts).toISOString())}
-                      </span>
-                    </div>
-                    <pre className="text-[11px] text-text-secondary whitespace-pre-wrap font-mono leading-snug">
-                      {JSON.stringify(r.result, null, 2)}
-                    </pre>
-                  </Card>
-                ))}
-            </div>
+                .map((r, i) => {
+                  const s = summarizeTool(r.name, r.args, r.result);
+                  const Icon = s.icon;
+                  return (
+                    <li
+                      key={`${r.ts}-${i}`}
+                      className="flex items-start gap-2 rounded-xl border border-surface-border bg-surface-2 p-2.5"
+                    >
+                      <Icon size={14} className={`mt-0.5 shrink-0 ${s.ok ? 'text-nexus-primary' : 'text-danger'}`} />
+                      <div className="min-w-0">
+                        <p className="text-xs text-text-primary leading-snug">{s.text}</p>
+                        <p className="text-[10px] text-text-muted mt-0.5">
+                          {formatRelative(new Date(r.ts).toISOString())}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+            </ul>
           )}
         </div>
       </aside>
