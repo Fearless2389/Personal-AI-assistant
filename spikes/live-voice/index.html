@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nexus voice spike</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; padding: 24px; background: #060810; color: #edf1f5; font: 14px/1.5 system-ui, sans-serif; }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      p.sub { color: #8b97a6; margin: 0 0 16px; }
+      button { background: #2dd4bf; color: #04120e; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
+      button:disabled { opacity: .4; cursor: default; }
+      #talk { margin-left: 8px; background: #141824; color: #edf1f5; border: 1px solid #29303f; }
+      #talk.on { background: #ef4444; color: #fff; border-color: #ef4444; }
+      #state { display: inline-block; margin-left: 12px; color: #8b97a6; }
+      .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      pre { background: #0b0e17; border: 1px solid #29303f; border-radius: 8px; padding: 12px; height: 55vh; overflow: auto; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Nexus voice spike</h1>
+    <p class="sub">Click Arm once (browsers need one click before audio can play). Then hold Space, the Talk button, or the global hotkey from tray.ps1.</p>
+    <div class="row">
+      <button id="arm">Arm voice</button>
+      <button id="talk" disabled>Hold to talk</button>
+      <span id="state">idle</span>
+    </div>
+    <pre id="log"></pre>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const t0 = performance.now();
+      const ms = () => Math.round(performance.now() - t0);
+      const metrics = { events: [], replies: [] };
+      function log(msg, extra) {
+        const line = `${String(ms()).padStart(6)} ms  ${msg}`;
+        $('log').textContent += line + '\n';
+        $('log').scrollTop = 1e9;
+        metrics.events.push({ t: ms(), msg, ...extra });
+      }
+      const setState = (s) => ($('state').textContent = s);
+
+      // Stub of the Nexus list_upcoming tool. In v1 this becomes a POST to the
+      // Nexus server, which runs the real tool behind auth + the confirm gate.
+      const stubUpcoming = () => ({ items: [
+        { kind: 'application', title: 'Google — OA', at: 'Friday 6:00 PM' },
+        { kind: 'application', title: 'Uber — interview round 1', at: 'Monday 11:00 AM' },
+        { kind: 'task', title: 'Update resume with Nexus project', at: 'Thursday' }
+      ] });
+
+      // ---- audio out: 24 kHz PCM chunks scheduled back to back ----------------
+      let outCtx, nextAt = 0;
+      const playing = new Set();
+      function playPcm(b64) {
+        const bin = atob(b64);
+        const pcm = new Int16Array(bin.length / 2);
+        for (let i = 0; i < pcm.length; i++) pcm[i] = (bin.charCodeAt(2 * i + 1) << 8) | bin.charCodeAt(2 * i);
+        const buf = outCtx.createBuffer(1, pcm.length, 24000);
+        const ch = buf.getChannelData(0);
+        for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 32768;
+        const src = outCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(outCtx.destination);
+        nextAt = Math.max(nextAt, outCtx.currentTime + 0.02);
+        src.start(nextAt);
+        nextAt += buf.duration;
+        playing.add(src);
+        src.onended = () => playing.delete(src);
+      }
+      function stopPlayback() {
+        for (const s of playing) try { s.stop(); } catch {}
+        playing.clear();
+        nextAt = 0;
+      }
+
+      // ---- audio in: mic -> 16 kHz Int16 -> base64, ~100 ms per message --------
+      const WORKLET = `class Tap extends AudioWorkletProcessor {
+        process(inputs) { const c = inputs[0][0]; if (c) this.port.postMessage(c.slice(0)); return true; }
+      } registerProcessor('tap', Tap);`;
+      let inCtx, talking = false, pending = [];
+      async function startMic() {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+        inCtx = new AudioContext({ sampleRate: 16000 });
+        await inCtx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })));
+        const node = new AudioWorkletNode(inCtx, 'tap');
+        inCtx.createMediaStreamSource(stream).connect(node);
+        node.port.onmessage = (e) => {
+          if (!talking) return;
+          pending.push(e.data);
+          if (pending.reduce((n, a) => n + a.length, 0) >= 1600) flushMic();
+        };
+      }
+      function flushMic() {
+        const n = pending.reduce((s, a) => s + a.length, 0);
+        if (!n || ws?.readyState !== 1) return (pending = []);
+        const pcm = new Int16Array(n);
+        let o = 0;
+        for (const a of pending) for (let i = 0; i < a.length; i++) pcm[o++] = Math.max(-1, Math.min(1, a[i])) * 0x7fff;
+        pending = [];
+        const bytes = new Uint8Array(pcm.buffer);
+        let bin = '';
+        for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        ws.send(JSON.stringify({ realtimeInput: { audio: { data: btoa(bin), mimeType: 'audio/pcm;rate=16000' } } }));
+      }
+
+      // ---- Live session ---------------------------------------------------------
+      let ws, ready = false, releasedAt = 0, firstAudio = true, heard = '', said = '';
+      const WS = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained';
+      async function connect() {
+        ready = false;
+        setState('connecting…');
+        const t = performance.now();
+        const r = await fetch('/token' + location.search, { method: 'POST' });
+        const { token, model, error } = await r.json();
+        if (error) return log('token error: ' + error);
+        log(`token for ${model} (${Math.round(performance.now() - t)} ms)`);
+        ws = new WebSocket(`${WS}?access_token=${encodeURIComponent(token)}`);
+        ws.onopen = () => ws.send(JSON.stringify({ setup: {} })); // config is locked server-side in the token
+        ws.onmessage = async (ev) => onServer(JSON.parse(typeof ev.data === 'string' ? ev.data : await ev.data.text()));
+        ws.onclose = (e) => { ready = false; setState('disconnected'); log(`socket closed ${e.code} ${e.reason}`); };
+      }
+      function onServer(msg) {
+        if (msg.setupComplete) { ready = true; setState('ready — hold to talk'); log('setupComplete'); }
+        if (msg.toolCall) {
+          for (const c of msg.toolCall.functionCalls || []) {
+            log(`tool ${c.name}(${JSON.stringify(c.args || {})}) at +${Math.round(performance.now() - releasedAt)} ms`, { tool: c.name });
+            ws.send(JSON.stringify({ toolResponse: { functionResponses: [{ id: c.id, name: c.name, response: { result: stubUpcoming() } }] } }));
+          }
+        }
+        const sc = msg.serverContent;
+        if (!sc) return msg.goAway && log('goAway ' + msg.goAway.timeLeft);
+        if (sc.inputTranscription?.text) heard += sc.inputTranscription.text;
+        if (sc.outputTranscription?.text) said += sc.outputTranscription.text;
+        for (const p of sc.modelTurn?.parts || []) {
+          if (!p.inlineData?.data) continue;
+          if (firstAudio) {
+            firstAudio = false;
+            const lat = Math.round(performance.now() - releasedAt);
+            log(`first audio ${lat} ms after release`);
+            metrics.replies.push({ latencyMs: lat });
+            setState('speaking — hold to interrupt');
+          }
+          playPcm(p.inlineData.data);
+        }
+        if (sc.interrupted) { stopPlayback(); log('interrupted → playback stopped', { interrupted: true }); }
+        if (sc.turnComplete && said) {
+          log(`heard: "${heard.trim()}"`);
+          log(`said:  "${said.trim()}"`);
+          metrics.replies.at(-1) && Object.assign(metrics.replies.at(-1), { heard: heard.trim(), said: said.trim() });
+          heard = said = '';
+          setState('ready — hold to talk');
+        }
+      }
+
+      // ---- push-to-talk ---------------------------------------------------------
+      function pttDown() {
+        if (talking || !ready) return;
+        talking = true;
+        stopPlayback(); // local barge-in: silence instantly, server confirms with `interrupted`
+        ws.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
+        $('talk').classList.add('on');
+        setState('listening…');
+        log('ptt down');
+      }
+      function pttUp() {
+        if (!talking) return;
+        talking = false;
+        flushMic();
+        ws.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
+        releasedAt = performance.now();
+        firstAudio = true;
+        $('talk').classList.remove('on');
+        setState('thinking…');
+        log('ptt up');
+      }
+
+      async function arm() {
+        $('arm').disabled = true;
+        outCtx = new AudioContext({ sampleRate: 24000 });
+        await startMic();
+        metrics.micAt = Date.now(); // lets the automated test line up with its fake-mic audio loop
+        log('mic on');
+        await connect();
+        $('talk').disabled = false;
+        // Global hotkey from the tray helper arrives over SSE, even when this tab is in the background.
+        const es = new EventSource('/events');
+        es.onmessage = (e) => {
+          const { event, at } = JSON.parse(e.data);
+          log(`hotkey ${event} (${Date.now() - at} ms in transit)`, { hotkey: event });
+          event === 'ptt_down' ? pttDown() : pttUp();
+        };
+      }
+
+      $('arm').onclick = arm;
+      $('talk').onpointerdown = pttDown;
+      $('talk').onpointerup = $('talk').onpointerleave = pttUp;
+      addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat) { e.preventDefault(); pttDown(); } });
+      addEventListener('keyup', (e) => { if (e.code === 'Space') pttUp(); });
+      window.spike = { arm, pttDown, pttUp, metrics, isReady: () => ready };
+    </script>
+  </body>
+</html>
