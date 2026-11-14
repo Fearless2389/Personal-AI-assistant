@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { supabaseAdmin } from '../services/supabase.js';
-import { getChatModel } from '../services/gemini.js';
+import { getChatModel, streamTurn } from '../services/gemini.js';
 import { embedAndStore, retrieveMemory, buildSystemPrompt } from '../services/memory.js';
 import { MEMORY_THRESHOLD } from '../services/tools.js';
 import { runGuarded } from '../services/actionGate.js';
@@ -105,16 +105,11 @@ router.post('/', requireAuth, async (req, res) => {
     //    MAX_TOOL_ROUNDS, so one message can chain steps (look up, then update).
     let assistantText = '';
     for (let round = 0; ; round++) {
-      const stream = await model.generateContentStream({ contents });
-      for await (const chunk of stream.stream) {
-        const t = chunk.text();
-        if (t) {
-          assistantText += t;
-          sse(res, { type: 'text', delta: t });
-        }
-      }
-      const final = await stream.response;
-      const calls = (typeof final.functionCalls === 'function' ? final.functionCalls() : null) ?? [];
+      const turn = await streamTurn(model, contents, (t) => {
+        assistantText += t;
+        sse(res, { type: 'text', delta: t });
+      });
+      const { calls } = turn;
       if (!calls.length || round >= MAX_TOOL_ROUNDS) break;
 
       const responseParts = [];
@@ -130,11 +125,8 @@ router.post('/', requireAuth, async (req, res) => {
         sse(res, { type: 'tool_result', name: call.name, args: call.args ?? {}, result });
         responseParts.push({ functionResponse: { name: call.name, response: { result } } });
       }
-      contents = [
-        ...contents,
-        { role: 'model', parts: calls.map((c) => ({ functionCall: c })) },
-        { role: 'user', parts: responseParts }
-      ];
+      // The model's own turn (with its thought signatures), then the tool results.
+      contents = [...contents, turn.content, { role: 'user', parts: responseParts }];
     }
 
     // 8) Done event, end response

@@ -186,6 +186,33 @@ export async function getEmbedding(text) {
   return data.embedding.values; // 768-dim
 }
 
+/**
+ * Stream one model turn: text deltas go to onText as they arrive; returns the
+ * turn's function calls and the model `content` to append before sending tool
+ * results back.
+ *
+ * Gemini 3 models attach a `thoughtSignature` to function-call parts and reject the
+ * next request if it's missing ("Function call is missing a thought_signature").
+ * The SDK's merged `stream.response` drops it, so the model turn is rebuilt from the
+ * raw chunk parts, which keep it (verified live, 2026-11-14).
+ */
+export async function streamTurn(model, contents, onText = () => {}) {
+  const stream = await model.generateContentStream({ contents });
+  const parts = [];
+  let text = '';
+  for await (const chunk of stream.stream) {
+    for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
+      parts.push(part);
+      if (part.text && !part.thought) {
+        text += part.text;
+        onText(part.text);
+      }
+    }
+  }
+  const calls = parts.filter((p) => p.functionCall).map((p) => p.functionCall);
+  return { text, calls, content: { role: 'model', parts } };
+}
+
 export function getChatModel(systemInstruction) {
   return genAI.getGenerativeModel({
     model: 'gemini-flash-latest',
