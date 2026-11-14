@@ -85,6 +85,18 @@ export function wallTimeToUtcIso(value, tz = DEFAULT_TZ) {
   }
 }
 
+/**
+ * A datetime the MODEL produced. It only ever sees the user's local time (the
+ * prompt states it), so a trailing "Z" is a formatting habit, not real UTC —
+ * Gemini sent "…T17:00:00Z" for "5 PM" and the event landed at 10:30 PM IST.
+ * Read it as wall time like an offset-less value. Explicit offsets (+05:30) are
+ * kept. Apply exactly ONCE per value: the output is genuine UTC ending in Z.
+ */
+export function modelTimeToUtcIso(value, tz = DEFAULT_TZ) {
+  if (typeof value !== 'string') return value;
+  return wallTimeToUtcIso(value.trim().replace(/Z$/i, ''), tz);
+}
+
 /** Human-readable current date/time in the user's timezone, for prompts. */
 export function formatInTz(tz = DEFAULT_TZ, date = new Date()) {
   try {

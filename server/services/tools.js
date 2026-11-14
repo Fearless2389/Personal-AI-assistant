@@ -6,7 +6,7 @@ import { logHabitByName } from './habitService.js';
 import { trackApplication, listApplications, summarize } from './applicationService.js';
 import { listUpcoming } from './agenda.js';
 import { listRecentActions } from './actionLog.js';
-import { DEFAULT_TZ, wallTimeToUtcIso } from './time.js';
+import { DEFAULT_TZ, modelTimeToUtcIso } from './time.js';
 
 // Shared by text chat (routes/chat.js) and voice (routes/voice.js): one dispatcher,
 // one set of behaviours, whichever way the request arrived.
@@ -18,19 +18,23 @@ export const MEMORY_THRESHOLD = 0.5;
 // Every datetime argument across the tool declarations in services/gemini.js.
 const DATETIME_ARGS = ['due_date', 'scheduled_at', 'start_time', 'end_time', 'next_deadline'];
 
-/** Pin offset-less model datetimes ("…T17:00:00") to the user's timezone. */
+/**
+ * Pin the model's datetimes to the user's timezone ("…T17:00:00" or "…T17:00:00Z"
+ * both mean 5 PM local). Run ONCE, where model output enters — actionGate.runGuarded —
+ * never on stored args (they are already UTC and would shift again).
+ */
 export function normalizeDates(args, tz) {
   const out = { ...(args ?? {}) };
-  for (const key of DATETIME_ARGS) if (key in out) out[key] = wallTimeToUtcIso(out[key], tz);
+  for (const key of DATETIME_ARGS) if (key in out) out[key] = modelTimeToUtcIso(out[key], tz);
   return out;
 }
 
 /**
  * Tool dispatcher. Every handler returns a plain result object (never throws) so a
  * failing tool becomes something the model can explain instead of a broken stream.
+ * `args` must already be normalized (normalizeDates) — call through actionGate.runGuarded.
  */
-export async function handleToolCall(name, rawArgs, userId, { tz = DEFAULT_TZ } = {}) {
-  const args = normalizeDates(rawArgs, tz);
+export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {}) {
   try {
     if (name === 'create_note') {
       const { title = null, content, tags = [] } = args ?? {};
