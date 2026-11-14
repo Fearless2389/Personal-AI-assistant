@@ -20,6 +20,7 @@ import settingsRouter from './routes/settings.js';
 import applicationsRouter from './routes/applications.js';
 import agendaRouter from './routes/agenda.js';
 import nudgesRouter from './routes/nudges.js';
+import voiceRouter from './routes/voice.js';
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 3001);
@@ -57,6 +58,7 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/applications', applicationsRouter);
 app.use('/api/agenda', agendaRouter);
 app.use('/api/nudges', nudgesRouter);
+app.use('/api/voice', voiceRouter);
 
 // 404 for unmatched /api/*
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
