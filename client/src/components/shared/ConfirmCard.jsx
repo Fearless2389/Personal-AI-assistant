@@ -1,17 +1,17 @@
-// A risky action parked by the server's confirmation gate ("Add 'Uber OA' to your
-// Google Calendar on …"). Confirm / Cancel here, or answer out loud. Once decided,
-// it stays as a one-line record of what happened.
+// A risky action parked by the server's confirmation gate ("Delete the task …",
+// "Add 'Uber OA' to your Google Calendar on …"). Confirm / Cancel here, or answer
+// in words. Once decided it stays as a one-line record of what happened.
+// onDecide defaults to a plain tap; voice passes one that also tells Nexus.
 import { ShieldCheck } from 'lucide-react';
-import { useVoiceStore } from '../../store/useVoiceStore.js';
-import { confirmByTap } from '../../lib/voice/engine.js';
-import { isWaiting } from '../../lib/voice/confirmations.js';
+import { useConfirmStore } from '../../store/useConfirmStore.js';
+import { isWaiting, resolveByTap } from '../../lib/confirmations.js';
 import { actionStatusMeta } from '../../lib/actionStatus.js';
 import { Badge } from '../ui/Badge.jsx';
 import { Button } from '../ui/Button.jsx';
 import { cn } from '../../lib/utils.js';
 
-export function ConfirmCard({ id }) {
-  const c = useVoiceStore((s) => s.confirmations[id]);
+export function ConfirmCard({ id, onDecide = resolveByTap, hint = 'or say "yes"' }) {
+  const c = useConfirmStore((s) => s.confirmations[id]);
   if (!c) return null;
   const waiting = isWaiting(c);
   const meta = actionStatusMeta(c.status);
@@ -33,13 +33,13 @@ export function ConfirmCard({ id }) {
       {c.error && <p className="mt-1.5 ml-6 text-xs text-danger">{c.error}</p>}
       {waiting && (
         <div className="mt-2 ml-6 flex items-center gap-2">
-          <Button size="sm" onClick={() => confirmByTap(id, 'confirm')}>
+          <Button size="sm" onClick={() => onDecide(id, 'confirm')}>
             Confirm
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => confirmByTap(id, 'cancel')}>
+          <Button size="sm" variant="ghost" onClick={() => onDecide(id, 'cancel')}>
             Cancel
           </Button>
-          <span className="text-xs text-text-muted">or say &ldquo;yes&rdquo;</span>
+          {hint && <span className="text-xs text-text-muted">{hint}</span>}
         </div>
       )}
     </div>

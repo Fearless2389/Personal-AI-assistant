@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { streamChat } from '../lib/api.js';
 import { useChatStore } from '../store/useChatStore.js';
-import { useRefreshStore, keysForTool } from '../store/useRefreshStore.js';
+import { applyToolResult } from '../lib/confirmations.js';
 
 export function useStreamingChat() {
   const ctrlRef = useRef(null);
@@ -24,7 +24,7 @@ export function useStreamingChat() {
           else if (evt.type === 'memory') setMemory(evt.items ?? []);
           else if (evt.type === 'tool_result') {
             pushToolResult({ name: evt.name, args: evt.args, result: evt.result });
-            if (evt.result?.ok !== false) useRefreshStore.getState().bump(...keysForTool(evt.name));
+            applyToolResult(evt.name, evt.result);
           } else if (evt.type === 'done') finishStreaming();
           else if (evt.type === 'error') {
             appendDelta(`\n\n[error] ${evt.message}`);

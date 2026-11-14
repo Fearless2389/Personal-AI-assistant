@@ -6,11 +6,10 @@
 // tools (relayed to /api/voice/tool, run server-side) → it speaks → turn saved to
 // conversations. Pressing again while it speaks interrupts it (barge-in).
 import { useVoiceStore, MAX_TURNS } from '../../store/useVoiceStore.js';
-import { useRefreshStore, keysForTool } from '../../store/useRefreshStore.js';
 import { voiceApi } from '../api.js';
 import { MicCapture, PcmPlayer } from './audio.js';
 import { LiveSession } from './liveSession.js';
-import { trackParked, applyResolution, resolveByTap, cancelAllWaiting } from './confirmations.js';
+import { applyToolResult, resolveByTap, resolveBySpeech, cancelAllWaiting, waitingIds } from '../confirmations.js';
 
 // Close the socket and release the mic after this long without talking, so the
 // browser's recording indicator doesn't stay on and the free quota isn't held open.
@@ -34,6 +33,8 @@ let heardId = null; // turn receiving the user's transcript
 let answerId = null; // turn receiving the model's transcript, tools and audio
 let toolTurnOpen = false; // a toolCall arrived; its silent turnComplete is not the answer
 let muted = false; // kill switch pressed: drop the rest of the current answer's audio
+let waitingAtPress = []; // confirmations already waiting when this utterance began
+let modelResolved = false; // the model called resolve_pending_action for this utterance
 let idleTimer = null;
 
 const setStatus = (status, error = null) => set({ status, error });
@@ -116,6 +117,8 @@ export async function pressStart() {
   talking = true;
   serverActive = false;
   muted = false;
+  waitingAtPress = waitingIds();
+  modelResolved = false;
   backlog = [];
   clearTimeout(idleTimer);
   player?.stop(); // barge-in: silence locally at once; the server confirms with `interrupted`
@@ -304,11 +307,33 @@ async function runTools(calls, turnId) {
       result = { ok: false, error: err.message };
     }
     patchTurn(turnId, (t) => ({ ...t, actions: [...t.actions, { name, args, result }] }));
-    if (name === 'resolve_pending_action') applyResolution(result);
-    else if (!trackParked(result) && result?.ok !== false) useRefreshStore.getState().bump(...keysForTool(name));
+    if (name === 'resolve_pending_action') modelResolved = true;
+    applyToolResult(name, result);
     for (const c of group) responses.push({ id: c.id, name, response: { result } });
   }
   session?.toolResponse(responses);
+}
+
+/**
+ * The model sometimes answers "Yes, go ahead" without calling resolve_pending_action
+ * (seen live: 1 of 2 runs). If exactly one action was already waiting when the user
+ * spoke and the model didn't route the answer, send the user's own words to the
+ * server, which applies the same yes/no check. Then tell the model what happened.
+ */
+async function backstopSpokenAnswer(turnId) {
+  if (modelResolved || waitingAtPress.length !== 1) return;
+  const id = waitingAtPress[0];
+  waitingAtPress = [];
+  const heard = findTurn(turnId)?.heard?.trim();
+  if (!heard || !waitingIds().includes(id)) return;
+  const res = await resolveBySpeech(id, heard);
+  if (!res || res.status === 'awaiting_confirmation') return;
+  const outcome = res.error ? `${res.status} (${res.error})` : res.status;
+  tellModel(
+    'Applied your spoken answer',
+    `[Rama's spoken answer "${heard}" was applied to: ${res.summary}. Outcome: ${outcome}. ` +
+      'Tell them in one short sentence. Do not call resolve_pending_action for this one.]'
+  );
 }
 
 // ---- server events --------------------------------------------------------------
@@ -348,6 +373,7 @@ function handlersFor(self) {
       muted = false;
       if (findTurn(answerId)?.said) persistTurn(answerId);
       if (!talking && get().status === 'thinking') setStatus('ready');
+      backstopSpokenAnswer(answerId);
     },
     onGoAway() {
       retiring = true;

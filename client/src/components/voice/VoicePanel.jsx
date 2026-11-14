@@ -3,10 +3,10 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVoiceStore } from '../../store/useVoiceStore.js';
-import { clearTranscript, shutdown, stopAll } from '../../lib/voice/engine.js';
-import { isWaiting } from '../../lib/voice/confirmations.js';
-import { ActionChip } from '../shared/ActionChip.jsx';
-import { ConfirmCard } from './ConfirmCard.jsx';
+import { clearTranscript, shutdown, stopAll, confirmByTap } from '../../lib/voice/engine.js';
+import { isWaiting, isShownAction } from '../../lib/confirmations.js';
+import { useConfirmStore } from '../../store/useConfirmStore.js';
+import { ActionItem } from '../shared/ActionItem.jsx';
 import { cn } from '../../lib/utils.js';
 
 const LABEL = {
@@ -18,10 +18,6 @@ const LABEL = {
   speaking: 'Speaking. Press to interrupt',
   error: 'Voice hit a problem'
 };
-
-// resolve_pending_action only updates a confirmation card, so it gets no chip of
-// its own (the card already shows the outcome).
-const visibleActions = (actions) => actions.filter((a) => a.name !== 'resolve_pending_action');
 
 const DOT = {
   off: 'bg-text-muted',
@@ -37,7 +33,7 @@ export function VoicePanel({ onClose }) {
   const status = useVoiceStore((s) => s.status);
   const error = useVoiceStore((s) => s.error);
   const turns = useVoiceStore((s) => s.turns);
-  const anyWaiting = useVoiceStore((s) => Object.values(s.confirmations).some(isWaiting));
+  const anyWaiting = useConfirmStore((s) => Object.values(s.confirmations).some(isWaiting));
   const navigate = useNavigate();
   const listRef = useRef(null);
 
@@ -79,7 +75,7 @@ export function VoicePanel({ onClose }) {
           </p>
         ) : (
           turns.map((t) => {
-            const shown = visibleActions(t.actions);
+            const shown = t.actions.filter(isShownAction);
             return (
               <div key={t.id} className="space-y-1.5">
                 <p className="text-sm">
@@ -94,11 +90,7 @@ export function VoicePanel({ onClose }) {
                   <ul className="space-y-1.5">
                     {shown.map((a, i) => (
                       <li key={i}>
-                        {a.result?.needs_confirmation ? (
-                          <ConfirmCard id={a.result.confirmation_id} />
-                        ) : (
-                          <ActionChip action={a} onNavigate={go} />
-                        )}
+                        <ActionItem action={a} onNavigate={go} onDecide={confirmByTap} />
                       </li>
                     ))}
                   </ul>

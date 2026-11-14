@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { summarizeTool } from '../lib/toolSummary.js';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +11,9 @@ import { NeuralField } from '../components/shared/NeuralField.jsx';
 import { Card } from '../components/ui/Card.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 import { formatRelative } from '../lib/utils.js';
+import { ConfirmCard } from '../components/shared/ConfirmCard.jsx';
+import { useConfirmStore } from '../store/useConfirmStore.js';
+import { isWaiting } from '../lib/confirmations.js';
 
 const SUGGESTIONS = [
   'Applied to Atlassian SWE intern off-campus, referral from Priya',
@@ -22,6 +25,14 @@ const SUGGESTIONS = [
 export default function Chat() {
   const { messages, isStreaming, memory, toolResults, resetSession } = useChatStore();
   const { send } = useStreamingChat();
+  // Actions in this session still waiting for a yes: shown above the composer so the
+  // buttons are reachable on every screen size (the Actions sidebar is desktop-only).
+  const confirmations = useConfirmStore((s) => s.confirmations);
+  const parkedIds = useMemo(
+    () => toolResults.filter((r) => r.result?.needs_confirmation).map((r) => r.result.confirmation_id),
+    [toolResults]
+  );
+  const waitingIds = parkedIds.filter((id) => isWaiting(confirmations[id]));
   const location = useLocation();
   const navigate = useNavigate();
   // Prompts handed over from elsewhere (e.g. a nudge's "Prep plan") arrive via
@@ -119,6 +130,13 @@ export default function Chat() {
         {/* Composer */}
         <div className="px-4 md:px-8 pb-5 pt-2">
           <div className="max-w-3xl mx-auto">
+            {waitingIds.length > 0 && (
+              <div className="mb-2 space-y-1.5">
+                {waitingIds.map((id) => (
+                  <ConfirmCard key={id} id={id} hint='or type "yes"' />
+                ))}
+              </div>
+            )}
             <div className="flex items-end gap-2 rounded-2xl border border-surface-border bg-surface-2 p-2 pl-4 shadow-[0_18px_40px_-28px_rgba(0,0,0,0.8)] focus-within:border-nexus-primary/40 transition-colors">
               <textarea
                 rows={1}

@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
 import { Mic, Loader2, AlertCircle } from 'lucide-react';
 import { useVoiceStore } from '../../store/useVoiceStore.js';
 import { pressStart, pressEnd, warmUp, shutdown, stopAll } from '../../lib/voice/engine.js';
-import { hasWaiting } from '../../lib/voice/confirmations.js';
+import { hasWaiting } from '../../lib/confirmations.js';
 import { cn } from '../../lib/utils.js';
 import { VoicePanel } from './VoicePanel.jsx';
 

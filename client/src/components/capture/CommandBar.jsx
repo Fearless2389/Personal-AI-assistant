@@ -6,10 +6,10 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowUp, Sparkles, CornerDownLeft } from 'lucide-react';
 import { streamChat } from '../../lib/api.js';
-import { ActionChip } from '../shared/ActionChip.jsx';
+import { ActionItem } from '../shared/ActionItem.jsx';
+import { applyToolResult, isShownAction } from '../../lib/confirmations.js';
 import { cn } from '../../lib/utils.js';
 import { useCommandBar } from '../../store/useCommandBar.js';
-import { useRefreshStore, keysForTool } from '../../store/useRefreshStore.js';
 import { VoiceButton } from '../shared/VoiceButton.jsx';
 
 const HINTS = [
@@ -42,7 +42,6 @@ export function CommandBar() {
 }
 
 function CapturePanel({ seed, hide }) {
-  const bump = useRefreshStore((s) => s.bump);
   const navigate = useNavigate();
   const inputRef = useRef(null);
   const ctrlRef = useRef(null);
@@ -74,7 +73,7 @@ function CapturePanel({ seed, hide }) {
         if (evt.type === 'text') setReply((r) => r + (evt.delta ?? ''));
         else if (evt.type === 'tool_result') {
           setActions((list) => [...list, { name: evt.name, args: evt.args, result: evt.result }]);
-          if (evt.result?.ok !== false) bump(...keysForTool(evt.name));
+          applyToolResult(evt.name, evt.result);
         } else if (evt.type === 'error') {
           failed = true;
           setError(evt.message);
@@ -181,11 +180,11 @@ function CapturePanel({ seed, hide }) {
             <p className="text-sm text-text-secondary">Nexus is on it…</p>
           )}
 
-          {actions.length > 0 && (
+          {actions.some(isShownAction) && (
             <ul className="space-y-1.5 mb-2">
-              {actions.map((a, i) => (
+              {actions.filter(isShownAction).map((a, i) => (
                 <motion.li key={i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}>
-                  <ActionChip action={a} onNavigate={go} />
+                  <ActionItem action={a} onNavigate={go} hint='or type "yes"' />
                 </motion.li>
               ))}
             </ul>

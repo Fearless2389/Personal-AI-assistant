@@ -94,7 +94,8 @@ export const voiceApi = {
 
 export const actionsApi = {
   list: (limit = 20) => request(`/api/actions?limit=${limit}`),
-  resolve: (id, decision) => request(`/api/actions/${id}/resolve`, { method: 'POST', body: { decision } }),
+  resolve: (id, decision, utterance) =>
+    request(`/api/actions/${id}/resolve`, { method: 'POST', body: { decision, utterance } }),
   cancelPending: () => request('/api/actions/cancel-pending', { method: 'POST' })
 };
 
