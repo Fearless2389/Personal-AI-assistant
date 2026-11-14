@@ -85,6 +85,12 @@ export const nudgesApi = {
     request('/api/nudges/dismiss', { method: 'POST', body: { key, snooze_hours: snoozeHours } })
 };
 
+export const voiceApi = {
+  session: () => request('/api/voice/session', { method: 'POST' }),
+  tool: (name, args) => request('/api/voice/tool', { method: 'POST', body: { name, args } }),
+  turn: ({ sessionId, heard, said }) => request('/api/voice/turn', { method: 'POST', body: { sessionId, heard, said } })
+};
+
 export const habitsApi = {
   list: () => request('/api/habits'),
   create: (payload) => request('/api/habits', { method: 'POST', body: payload }),

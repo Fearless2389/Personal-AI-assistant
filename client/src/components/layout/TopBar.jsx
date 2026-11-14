@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase.js';
 import { useUser } from '../../hooks/useSupabase.js';
 import { useCommandBar } from '../../store/useCommandBar.js';
 import { Button } from '../ui/Button.jsx';
+import { VoiceOrb } from '../voice/VoiceOrb.jsx';
 
 const TITLES = {
   '/dashboard': 'Today',
@@ -58,7 +59,8 @@ export function TopBar() {
             </button>
           )}
         </div>
-        <div className="relative" ref={ref}>
+        <VoiceOrb />
+        <div className="relative ml-2" ref={ref}>
           <button
             onClick={() => setOpen((v) => !v)}
             className="w-9 h-9 rounded-full bg-gradient-to-br from-nexus-primary to-nexus-secondary text-on-accent font-display font-semibold grid place-items-center hover:opacity-90"

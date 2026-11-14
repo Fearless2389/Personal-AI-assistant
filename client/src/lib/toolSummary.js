@@ -28,6 +28,17 @@ function when(iso) {
 
 const join = (...parts) => parts.filter(Boolean).join(' · ');
 
+/** Where a confirmation chip should take you, if anywhere. */
+export function chipTarget(action) {
+  if (action.name === 'track_application' && action.result?.application?.id) {
+    return `/applications?open=${action.result.application.id}`;
+  }
+  if (action.name === 'create_task') return '/tasks';
+  if (action.name === 'create_note') return '/notes';
+  if (action.name === 'create_calendar_event') return '/calendar';
+  return null;
+}
+
 /** → { icon, text, ok } */
 export function summarizeTool(name, args = {}, result = {}) {
   if (result?.ok === false) {
@@ -38,8 +49,14 @@ export function summarizeTool(name, args = {}, result = {}) {
       const a = result.application ?? args;
       const verb = result.action === 'created' ? 'Tracking' : 'Updated';
       const stage = stageMeta(a.stage).label;
-      // Skip a next step that just restates the stage ("OA / Test · OA").
-      const step = a.next_step && !stage.toLowerCase().includes(a.next_step.toLowerCase()) ? a.next_step : null;
+      // Skip a next step that just restates the stage ("OA / Test · OA",
+      // "OA / Test · Online assessment", "Interview · Interview").
+      const restates =
+        a.next_step &&
+        (stage.toLowerCase().includes(a.next_step.toLowerCase()) ||
+          (a.stage === 'oa' && /^(the )?(oa|online (assessment|test)|assessment|test)$/i.test(a.next_step.trim())) ||
+          (a.stage === 'interview' && /^(the )?interview$/i.test(a.next_step.trim())));
+      const step = restates ? null : a.next_step;
       return {
         icon: Briefcase,
         ok: true,

@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowUp, Sparkles, CornerDownLeft } from 'lucide-react';
 import { streamChat } from '../../lib/api.js';
-import { summarizeTool } from '../../lib/toolSummary.js';
+import { ActionChip } from '../shared/ActionChip.jsx';
 import { cn } from '../../lib/utils.js';
 import { useCommandBar } from '../../store/useCommandBar.js';
 import { useRefreshStore, keysForTool } from '../../store/useRefreshStore.js';
@@ -17,17 +17,6 @@ const HINTS = [
   'Comp Fin assignment due Monday 11:59pm',
   "What's due this week?"
 ];
-
-// Where a confirmation chip should take you, if anywhere.
-function chipTarget(action) {
-  if (action.name === 'track_application' && action.result?.application?.id) {
-    return `/applications?open=${action.result.application.id}`;
-  }
-  if (action.name === 'create_task') return '/tasks';
-  if (action.name === 'create_note') return '/notes';
-  if (action.name === 'create_calendar_event') return '/calendar';
-  return null;
-}
 
 function newCaptureId() {
   return `capture-${globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)}`;
@@ -194,40 +183,11 @@ function CapturePanel({ seed, hide }) {
 
           {actions.length > 0 && (
             <ul className="space-y-1.5 mb-2">
-              {actions.map((a, i) => {
-                const s = summarizeTool(a.name, a.args, a.result);
-                const to = s.ok ? chipTarget(a) : null;
-                const Icon = s.icon;
-                const body = (
-                  <>
-                    <Icon size={14} className={s.ok ? 'text-nexus-primary' : 'text-danger'} />
-                    <span className="truncate">{s.text}</span>
-                  </>
-                );
-                return (
-                  <motion.li key={i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}>
-                    {to ? (
-                      <button
-                        onClick={() => go(to)}
-                        className="w-full flex items-center gap-2 rounded-lg bg-nexus-primary/[0.07] border border-nexus-primary/20 px-2.5 py-1.5 text-sm text-text-primary text-left hover:border-nexus-primary/45"
-                      >
-                        {body}
-                      </button>
-                    ) : (
-                      <div
-                        className={cn(
-                          'flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm',
-                          s.ok
-                            ? 'border-surface-border text-text-secondary'
-                            : 'border-danger/30 bg-danger/[0.07] text-text-primary'
-                        )}
-                      >
-                        {body}
-                      </div>
-                    )}
-                  </motion.li>
-                );
-              })}
+              {actions.map((a, i) => (
+                <motion.li key={i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}>
+                  <ActionChip action={a} onNavigate={go} />
+                </motion.li>
+              ))}
             </ul>
           )}
 
