@@ -1,8 +1,13 @@
 import { google } from 'googleapis';
 
+// Calendar: read + edit events. Gmail: readonly (search/read) + compose (drafts and
+// send; compose cannot delete mail or change settings). Adding a scope means users
+// connected earlier must reconnect once; calls then fail with needs_reconnect.
 export const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
-  'https://www.googleapis.com/auth/calendar.readonly'
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/gmail.compose'
 ];
 
 export function buildOAuthClient() {
