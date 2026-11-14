@@ -61,7 +61,7 @@ None blocking. New ones get added here as they come up.
 | --- | --- | --- |
 | Web Speech mic button (chat, ⌘K) | shipped | Chrome-only, one-shot dictation. |
 | Push-to-talk hotkey (global, via tray helper) | v1 | See section 6. |
-| Real-time voice conversation (Gemini Live) | v1 | 15-min audio sessions, extendable via session resumption. Pick a non-retiring model: Vertex lists 2.5 Flash native audio for retirement on 2026-12-13. |
+| Real-time voice conversation (Gemini Live) | v1 | `gemini-3.8-live` (free tier, current). Phase 0 spike: ~1 s to first spoken word incl. a tool call; setup 2–3 s, so pre-warm the session. See `spikes/live-voice/FINDINGS.md`. |
 | Barge-in (interrupt it mid-sentence) | v1 | Native to the Live API. |
 | Live transcript + action chips while speaking | v1 | Reuse `toolSummary.js` chips. |
 | Voice persona / choice of voice | next | |
@@ -157,3 +157,5 @@ None blocking. New ones get added here as they come up.
   questions Q1–Q4, and all previously deferred items.
 - **2026-11-11** — Resolved Q1–Q4: global hotkey via tray helper, English only, read-only web,
   laptop only.
+- **2026-11-12** — Phase 0 spike: GO. Ephemeral tokens, push-to-talk, barge-in, voice tool call
+  and the tray hotkey all verified (`spikes/live-voice/FINDINGS.md`).
