@@ -75,12 +75,13 @@ None blocking. New ones get added here as they come up.
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| 10 Nexus tools, 3-round tool chaining | shipped | `services/tools.js`, shared by chat and voice. |
+| 20 Nexus tools, 3-round tool chaining | shipped | `services/tools.js`, shared by chat and voice. Phase 3 added `manage_*` (one per section, by name) + Gmail + calendar edits. |
 | Confirmation gate for risky tools | shipped | Phase 2. `actionPolicy.js` risk table (safe / confirm / never; unknown = confirm). Tap Confirm or say yes; the yes is checked against your mic transcript, not the model. 2-min expiry. |
 | Action log ("what did you just do?") | shipped | Phase 2. `action_log` (migration 006), voice + chat, Settings → Recent actions, `list_recent_actions` tool. |
 | Undo for logged actions | next | Log has what's needed (tool + args + result ids). |
-| Gate typed chat too | later | Chat logs but doesn't gate: the request is already typed by you. |
-| Prompt-injection guard | v1 | Email bodies and web pages are data, never instructions; tools that read external content can't trigger sends in the same turn without confirmation. |
+| Gate typed chat too | shipped | Phase 3. Chat/⌘K show the same confirmation card; a typed "yes" also counts. |
+| Voice parity with the pages | shipped | Phase 3. Habits, tasks, notes, goals, reminders, calendar events: everything the pages can do. |
+| Prompt-injection guard | shipped | Phase 3 (email). Email content is marked untrusted (invisible characters stripped); sends always need the user's own yes with the recipient shown. Red-team: a malicious email was read 9×, acted on 0×. Web pages join in Phase 4. |
 | Kill switch ("stop" cancels everything in flight) | shipped | Phase 2. Esc / Stop button silences Nexus and cancels every pending action; saying "stop" or "cancel" cancels via the model. A tool already running on the server finishes. |
 | Multi-step plans ("prep me for tomorrow's OA") | next | Plan → confirm → execute. |
 | Long-term preference learning | idea | |
@@ -103,10 +104,11 @@ None blocking. New ones get added here as they come up.
 | Item | Status | Notes |
 | --- | --- | --- |
 | Calendar read + create | shipped | PKCE OAuth, encrypted tokens. |
-| Calendar edit / reschedule / delete | v1 | Delete = confirm. |
-| Gmail search + summarise ("anything from Amazon recruiting?") | v1 | Restricted scope → "unverified app" screen; fine for a personal app with you as test user. |
-| Gmail draft reply | v1 | Safe — lands in Drafts. |
-| Gmail send | v1 | Always confirm. |
+| Calendar edit / reschedule / delete | shipped | Phase 3. `manage_calendar_event`; moving the start keeps the length; update/delete = confirm. |
+| Gmail search + summarise ("anything from Amazon recruiting?") | shipped | Phase 3. Needs the Gmail API enabled + one reconnect (scopes: gmail.readonly, gmail.compose). |
+| Gmail draft reply | shipped | Phase 3. Safe — lands in Drafts, threaded under the original. |
+| Gmail send | shipped | Phase 3. Always confirm; recipients validated and pinned before the readback. |
+| Google OAuth app out of "Testing" | next | Testing mode expires refresh tokens every 7 days (likely why Calendar showed "broken"). Your call: publish unverified. |
 | Auto-detect placement emails → update application cards | next | Biggest placement-season win; needs careful parsing. |
 | Drive search + read docs | next | |
 | Create Docs / Sheets | later | |
@@ -161,6 +163,9 @@ extend to local Windows apps (section 6).
 | Deploy (always-on server) | next | Scheduler only runs while the server runs; Supabase free tier pauses after ~7 idle days. |
 | Code-split the client bundle (~820 KB) | later | |
 | Fix 10 pre-existing lint errors | later | `set-state-in-effect` in older pages + 3 unused imports. |
+| Habit dates use the server clock | next | `habitService.dayStr` uses the server's timezone; fine on the laptop, off by a day once deployed (UTC). The assistant's tool already passes the user's date. |
+| Chat model fallback + request timeout | next | 2026-11-14: `gemini-flash-latest` hung (no response for minutes) while `gemini-flash-lite-latest` answered in ~1 s. Chat has no timeout, so it just spins. Add a timeout and a configurable fallback model. |
+| Chat composer under the mobile nav | next | At phone width the chat input sits partly behind the bottom navigation bar. |
 
 ### 9. Small UX ideas
 
@@ -182,6 +187,10 @@ extend to local Windows apps (section 6).
 - **2026-11-14** — Phase 1 (voice core) built: voice orb + transcript panel, locked-setup tokens,
   tools via the shared dispatcher, voice turns saved to memory. Also fixed model datetimes with no
   offset being stored as UTC (affected text chat too). Verified against live Supabase and pushed.
+- **2026-11-14** — Phase 3 built: voice/chat parity with every section (`manage_*` tools, find by
+  name), Gmail search/read/draft/send, calendar edit/delete, typed chat gated with the same cards,
+  prompt-injection guard + red-team, voice backstop for a missed spoken "yes". Fixed: chat tool chaining
+  broke on Gemini 3 (thought signatures dropped by the SDK's stream merge).
 - **2026-11-14** — Added section 6b, the browser agent ("Alma track"): full browser control behind
   the confirmation gate first, local apps later. Placement portals are the first use case.
 - **2026-11-14** — Phase 2 (safety layer) built: confirmation gate (calendar + SMS wait for a tap or a

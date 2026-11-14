@@ -25,10 +25,16 @@ memory. Built solo by Rama on a strict free-tier-only stack.
   cards in place ("got the Google OA" moves the existing card).
 - **Nexus noticed** — deterministic nudges (no AI quota): deadlines within 48h, passed steps,
   applications quiet for 10+ days, evening "due tomorrow". Dismiss or snooze.
-- **Confirm before acting** — anything that leaves Nexus (Google Calendar events, SMS reminders)
-  waits for your OK: tap Confirm or just say "yes". Esc stops everything. Every action from voice
-  and chat is logged; see it in Settings → Recent actions, or ask "what did you just do?".
-- **Chat** — streaming Gemini with memory + 10 tools, chaining up to 3 tool rounds per
+- **Does what the pages do** — by voice or chat: create, check in, list or delete habits; complete,
+  reschedule or delete tasks; read and append notes; goals and milestones; cancel reminders. Name things
+  the way you say them ("the resume task"); if two match, Nexus asks which.
+- **Gmail + Calendar** — "anything from Amazon recruiting?", "read it", "draft a reply", "move my 5 PM to
+  6", "delete the mock interview". Drafts land in Gmail Drafts; sending always waits for your OK.
+- **Confirm before acting** — anything that leaves Nexus or can't be undone (sending email, calendar
+  changes, SMS, deletes) waits for your OK: tap Confirm, or say/type "yes". Esc stops everything. Emails
+  are treated as untrusted data, so a malicious email can't make Nexus act. Every action from voice and
+  chat is logged: Settings → Recent actions, or ask "what did you just do?".
+- **Chat** — streaming Gemini with memory + 20 tools, chaining up to 3 tool rounds per
   message. Every turn sees the next 7 days of deadlines straight from the database.
 - **Morning briefing** — timezone-correct, prioritises placement deadlines; scheduler pass
   generates it daily at your chosen hour (delivery channel pluggable — SMS/WhatsApp when configured).
@@ -75,7 +81,7 @@ nexus/
 ├── docs/PRD.md                  — product requirements
 ├── supabase/migrations/         — 001 schema · 002 calendar tokens · 003 calendar memory + SMS
 │                                  · 004 timezone + briefing · 005 applications + nudges
-│                                  · 006 action log
+│                                  · 006 action log (also the confirmation record)
 ├── server/
 │   ├── index.js                 — Express entry, mounts /api/*, starts the scheduler
 │   ├── routes/                   — chat, dashboard, agenda, applications, nudges, notes, tasks,

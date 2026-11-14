@@ -15,21 +15,33 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
 
 ## Key patterns
 
-- **Tools** live in one dispatcher shared by chat and voice: `server/services/tools.js` →
-  `handleToolCall`; declarations in `services/gemini.js`. Ten tools: create_note, create_task,
-  create_calendar_event, schedule_reminder, log_habit, search_memory, track_application,
-  list_applications, list_upcoming, list_recent_actions (+ voice-only resolve_pending_action in
-  `services/voice.js`). The chat loop chains up to `MAX_TOOL_ROUNDS` (3). New tool → give it a risk level
-  in `services/actionPolicy.js` (unlisted = gated), a summary in `client/src/lib/toolSummary.js` and
-  refresh keys in `store/useRefreshStore.js`.
+- **Tools** (20) live in one dispatcher shared by chat and voice: `server/services/tools.js` →
+  `handleToolCall`, which routes to small handler modules. Declarations: `services/gemini.js` (core),
+  `manageDeclarations.js`, `googleDeclarations.js`.
+  - Core: create_note, create_task, create_calendar_event, schedule_reminder, search_memory,
+    track_application, list_applications, list_upcoming, list_recent_actions, resolve_pending_action.
+  - `manage_*` (`manageTools.js`): one tool per section with an `action` — manage_task, manage_habit,
+    manage_note, manage_goal, manage_reminder. Items are found **by name** via `matcher.js#pickByName`
+    (tested; ambiguous → `needs_choice`, never a guess).
+  - Google (`googleTools.js`): search_email, read_email, draft_email, send_email, manage_calendar_event.
+  - The chat loop chains up to `MAX_TOOL_ROUNDS` (3) using `gemini.js#streamTurn`.
+  New tool → a risk level in `actionPolicy.js` (unlisted = gated; per-action levels allowed), a chip in
+  `client/src/lib/toolSummary.js`, refresh keys in `store/useRefreshStore.js`, and a `useRefreshKey` in
+  the page that shows it.
 - **Confirmation gate + action log** (`services/actionGate.js` → `runGuarded`): routes never call
   `handleToolCall` directly. Risk levels (`safe` / `confirm` / `never`) and the yes/no rules are pure
   functions in `actionPolicy.js` (tested: `npm test` in server/). A `confirm` tool is parked as an
   `action_log` row (`awaiting_confirmation`) and runs only via `resolvePending`: a tap
   (`POST /api/actions/:id/resolve`) or the user's own mic transcript passing `isAffirmative` — the model
   can route a yes, never invent one. Status changes are compare-and-set (`actionLog.transition`) so a
-  double confirm runs once. Typed chat logs but is not gated (`gate: false`). Kill switch: Esc / Stop →
-  `engine.stopAll()` → `POST /api/actions/cancel-pending`.
+  double confirm runs once. Voice and chat both enter through `dispatchAssistantTool` (typed "yes" counts in
+  chat). Before parking, `tools.js#prepareAction` resolves and pins the target (`target_id`,
+  `target_label`, validated email recipients) so the readback is exact. Deletes, sends and calendar
+  edits are `confirm`. Kill switch: Esc / Stop → `engine.stopAll()` → `POST /api/actions/cancel-pending`.
+  Voice backstop: if the model doesn't route a spoken answer, the client posts the user's transcript to
+  `/api/actions/:id/resolve` (`utterance`), and the server applies the same yes/no check.
+  Client: `lib/confirmations.js` + `store/useConfirmStore.js` + `components/shared/ConfirmCard.jsx`
+  (shared by voice panel, chat and ⌘K); every tool result goes through `applyToolResult`.
   Model datetimes are pinned to the user's tz ONCE, in `runGuarded` (`normalizeDates` →
   `modelTimeToUtcIso`): Gemini emits `…T17:00:00` and sometimes `…T17:00:00Z` for "5 PM local" — both
   are wall time. Never normalize stored args again (they're real UTC and would shift).
@@ -57,11 +69,20 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
 - **SSE framing** is exactly `data: <json>\n\n`. Memory writes are fire-and-forget via `setImmediate`.
 - **Semantic memory:** embed with `embedAndStore(userId, table, id, text)`; search via
   `retrieveMemory` → `match_documents` RPC (searches notes, conversations, calendar_events).
-- **Google Calendar:** tokens AES-256-GCM encrypted (`crypto.js`); OAuth via PKCE + HMAC state
-  cookie (`stateCookie.js`); all Google logic in `calendarService.js`; never leak tokens to the client.
+- **Google (Calendar + Gmail):** tokens AES-256-GCM encrypted (`crypto.js`); OAuth via PKCE + HMAC state
+  cookie (`stateCookie.js`). Token storage, refresh, retry and error mapping live in `googleAuth.js`
+  (`not_connected`, `connection_broken`, `needs_reconnect`, `api_disabled`, …); `calendarService.js`
+  and `gmailService.js` only make API calls. Adding a scope in `googleOAuth.js` means reconnecting once.
+  Email helpers are pure and tested (`emailFormat.js`: header-injection-safe `buildRawEmail`, recipient
+  parsing, body extraction). Email content reaches the model marked untrusted; never leak tokens.
 
 ## Gotchas
 
+- **Gemini 3 thought signatures:** a function-call part carries a `thoughtSignature` and the next request
+  is rejected without it. The old SDK's merged `stream.response` DROPS it — always continue a tool loop
+  with `streamTurn(...).content` (built from raw chunk parts), never with rebuilt `{ functionCall }` parts.
+- **Writing invisible characters:** zero-width/bidi characters written through tools can land as literal
+  bytes. Use `\uXXXX` escapes in source and grep for stray invisibles before committing.
 - `user_settings` keys on `id` (= `auth.uid()`), not `user_id`. RLS + queries use `id`.
 - Adding an embeddable source? Add its `vector(768)` column AND extend `match_documents`
   (see migration `003` for the calendar_events precedent).
