@@ -3,18 +3,12 @@ import { requireAuth } from '../middleware/auth.js';
 import { supabaseAdmin } from '../services/supabase.js';
 import { getChatModel } from '../services/gemini.js';
 import { embedAndStore, retrieveMemory, buildSystemPrompt } from '../services/memory.js';
-import * as calendarService from '../services/calendarService.js';
-import { scheduleReminder } from '../services/reminderService.js';
-import { logHabitByName, listHabitsWithToday } from '../services/habitService.js';
-import { trackApplication, listApplications, summarize } from '../services/applicationService.js';
-import { listUpcoming } from '../services/agenda.js';
-import { DEFAULT_TZ, formatInTz } from '../services/time.js';
+import { handleToolCall, MEMORY_THRESHOLD } from '../services/tools.js';
+import { loadAssistantContext } from '../services/assistantContext.js';
+import { formatInTz } from '../services/time.js';
 
 const router = Router();
 
-// Cosine-similarity floor for semantic recall. gemini-embedding-001 scores real
-// matches around 0.5–0.8, so 0.6 silently dropped valid hits (measured).
-const MEMORY_THRESHOLD = 0.5;
 // How many rounds of tool calls one message may chain (e.g. look up → then update).
 const MAX_TOOL_ROUNDS = 3;
 
@@ -35,141 +29,6 @@ function friendlyAiError(err) {
  */
 function sse(res, payload) {
   res.write(`data: ${JSON.stringify(payload)}\n\n`);
-}
-
-/**
- * Tool dispatcher. Every handler returns a plain result object (never throws) so a
- * failing tool becomes something the model can explain instead of a broken stream.
- */
-async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {}) {
-  try {
-    if (name === 'create_note') {
-      const { title = null, content, tags = [] } = args ?? {};
-      const { data, error } = await supabaseAdmin
-        .from('notes')
-        .insert({ user_id: userId, title, content, tags, source: 'chat' })
-        .select('id, title, content, tags, created_at')
-        .single();
-      if (error) throw error;
-      // Fire-and-forget embedding write
-      setImmediate(() => embedAndStore(userId, 'notes', data.id, content));
-      return { ok: true, id: data.id, title: data.title, message: 'Note saved.' };
-    }
-
-    if (name === 'create_task') {
-      const { title, description = null, due_date = null, priority = 'medium', project_tag = null } = args ?? {};
-      const { data, error } = await supabaseAdmin
-        .from('tasks')
-        .insert({ user_id: userId, title, description, due_date, priority, project_tag })
-        .select('id, title, due_date, priority, status')
-        .single();
-      if (error) throw error;
-      return { ok: true, id: data.id, title: data.title, message: 'Task created.' };
-    }
-
-    if (name === 'search_memory') {
-      const { query } = args ?? {};
-      const results = await retrieveMemory(userId, String(query ?? ''), { threshold: MEMORY_THRESHOLD, limit: 5 });
-      return { ok: true, results };
-    }
-
-    if (name === 'schedule_reminder') {
-      const { message, scheduled_at, linked_type = null, linked_id = null } = args ?? {};
-      return await scheduleReminder(userId, { message, scheduled_at, linked_type, linked_id });
-    }
-    if (name === 'create_calendar_event') {
-      const { title, start_time, end_time, description = null, location = null } = args ?? {};
-      if (!title || !start_time || !end_time) {
-        return { ok: false, message: 'title, start_time, end_time are required.' };
-      }
-      try {
-        const idempotencyKey = `chat:${userId}:${Date.parse(start_time)}:${title}`;
-        const created = await calendarService.createEvent(
-          userId,
-          { title, start_time, end_time, description, location },
-          { idempotencyKey }
-        );
-
-        const { data: mirror, error: mirrorErr } = await supabaseAdmin
-          .from('calendar_events')
-          .insert({
-            user_id: userId,
-            google_event_id: created.google_event_id,
-            title,
-            description,
-            start_time,
-            end_time,
-            location
-          })
-          .select('id')
-          .single();
-        if (mirrorErr) {
-          console.error('[chat] calendar mirror insert failed:', mirrorErr.message);
-        } else {
-          const embedText =
-            `Calendar event: ${title} on ${start_time}` +
-            (location ? ` at ${location}` : '') +
-            (description ? `. ${description}` : '');
-          setImmediate(() => embedAndStore(userId, 'calendar_events', mirror.id, embedText));
-        }
-
-        return {
-          ok: true,
-          google_event_id: created.google_event_id,
-          html_link: created.html_link,
-          title,
-          start_time,
-          message: 'Event added to your Google Calendar.'
-        };
-      } catch (err) {
-        if (err.message === 'connection_broken') {
-          return { ok: false, error: 'Google Calendar connection expired — please reconnect on the Calendar page.' };
-        }
-        if (err.message === 'not_connected') {
-          return { ok: false, error: 'Google Calendar is not connected — open the Calendar page and click Connect.' };
-        }
-        if (err.message === 'rate_limited') {
-          return { ok: false, error: 'Google Calendar is rate-limiting us right now — try again in a few seconds.' };
-        }
-        console.error('[chat] create_calendar_event failed:', err);
-        return { ok: false, error: err.message ?? 'Calendar insert failed' };
-      }
-    }
-    if (name === 'log_habit') {
-      const { habit_name } = args ?? {};
-      const result = await logHabitByName(userId, habit_name);
-      if (result.ok) {
-        return {
-          ok: true,
-          habit: result.habit,
-          streak: result.streak,
-          message: `Logged "${result.habit}"${result.created ? ' (new habit)' : ''}. Streak: ${result.streak} day${result.streak === 1 ? '' : 's'}.`
-        };
-      }
-      return result;
-    }
-
-    if (name === 'track_application') {
-      return await trackApplication(userId, args ?? {});
-    }
-
-    if (name === 'list_applications') {
-      const { stage, channel, active_only = true } = args ?? {};
-      const apps = await listApplications(userId, { stage, channel, activeOnly: active_only !== false });
-      return { ok: true, count: apps.length, applications: apps.map(summarize) };
-    }
-
-    if (name === 'list_upcoming') {
-      const { days_ahead = 7, include_overdue = true } = args ?? {};
-      const items = await listUpcoming(userId, { daysAhead: days_ahead, includeOverdue: include_overdue, tz });
-      return { ok: true, timezone: tz, count: items.length, items };
-    }
-
-    return { ok: false, message: `Unknown tool: ${name}` };
-  } catch (err) {
-    console.error('[chat] tool', name, 'failed:', err.message);
-    return { ok: false, error: err.message };
-  }
 }
 
 /**
@@ -217,31 +76,8 @@ router.post('/', requireAuth, async (req, res) => {
       .order('created_at', { ascending: true })
       .limit(20);
 
-    // 4) Load persona + Google connection state from user_settings (defaults if missing)
-    const { data: settings } = await supabaseAdmin
-      .from('user_settings')
-      .select('persona_name, persona_style, google_connection_status, timezone')
-      .eq('id', userId)
-      .maybeSingle();
-    const tz = settings?.timezone || DEFAULT_TZ;
-
-    // 4b) Gather live context for the system prompt — all best-effort, all
-    //     independently guarded so a single failure never breaks chat.
-    const [upcoming, todaysHabits] = await Promise.all([
-      // Next 7 days of deadlines (tasks, application next-steps, events), overdue included
-      listUpcoming(userId, {
-        daysAhead: 7,
-        tz,
-        includeEvents: settings?.google_connection_status === 'connected'
-      }).catch((err) => {
-        console.warn(`[chat:${req.id}] agenda fetch failed:`, err.message);
-        return [];
-      }),
-      // Habits still pending today
-      listHabitsWithToday(userId)
-        .then((habits) => habits.filter((h) => !h.done_today).map((h) => ({ name: h.name })))
-        .catch(() => [])
-    ]);
+    // 4) Persona, timezone, next 7 days and open habits for the system prompt
+    const { settings, tz, upcoming, todaysHabits } = await loadAssistantContext(userId, { logTag: `chat:${req.id}` });
 
     const systemInstruction = buildSystemPrompt({
       personaName: settings?.persona_name ?? 'Nexus',

@@ -61,6 +61,30 @@ export function dayRangeUtc(tz = DEFAULT_TZ, date = new Date()) {
   return { start, end, startIso: start.toISOString(), endIso: end.toISOString() };
 }
 
+const NAIVE_DATETIME = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/;
+
+/**
+ * Gemini usually emits wall-clock times with no offset ("2026-11-16T17:00:00").
+ * Postgres would store that as UTC and Node would read it in the *server's* zone,
+ * so "5 PM" drifts by the UTC offset. Read offset-less datetimes as wall time in
+ * the user's zone and return a UTC ISO string. Anything else (already has Z or an
+ * offset, date-only, unparseable) is returned unchanged.
+ */
+export function wallTimeToUtcIso(value, tz = DEFAULT_TZ) {
+  if (typeof value !== 'string') return value;
+  const m = value.trim().match(NAIVE_DATETIME);
+  if (!m) return value;
+  const asUtc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] ?? 0));
+  try {
+    // Offset at the guess, then re-check at the result so a DST edge still lands right.
+    let utc = asUtc - tzOffsetMs(tz, new Date(asUtc));
+    utc = asUtc - tzOffsetMs(tz, new Date(utc));
+    return new Date(utc).toISOString();
+  } catch {
+    return value; // unknown timezone — leave it for the caller's own validation
+  }
+}
+
 /** Human-readable current date/time in the user's timezone, for prompts. */
 export function formatInTz(tz = DEFAULT_TZ, date = new Date()) {
   try {
