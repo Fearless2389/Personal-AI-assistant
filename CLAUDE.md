@@ -15,11 +15,21 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
 
 ## Key patterns
 
-- **Chat tools** live in one dispatcher: `server/routes/chat.js` → `handleToolCall`; declarations in
-  `services/gemini.js`. Nine tools: create_note, create_task, create_calendar_event,
-  schedule_reminder, log_habit, search_memory, track_application, list_applications, list_upcoming.
-  The chat loop chains up to `MAX_TOOL_ROUNDS` (3). New tool → add a summary in
-  `client/src/lib/toolSummary.js` and refresh keys in `store/useRefreshStore.js`.
+- **Tools** live in one dispatcher shared by chat and voice: `server/services/tools.js` →
+  `handleToolCall`; declarations in `services/gemini.js`. Nine tools: create_note, create_task,
+  create_calendar_event, schedule_reminder, log_habit, search_memory, track_application,
+  list_applications, list_upcoming. The chat loop chains up to `MAX_TOOL_ROUNDS` (3). New tool → add a
+  summary in `client/src/lib/toolSummary.js` and refresh keys in `store/useRefreshStore.js`.
+  `handleToolCall` pins offset-less model datetimes to the user's tz (`wallTimeToUtcIso`) — Gemini
+  emits `2026-11-16T17:00:00` with no offset; never pass model datetimes to the DB raw.
+- **Voice (Gemini Live)**: the browser streams audio straight to Google with a single-use token from
+  `POST /api/voice/session`; the token **locks the whole setup** (prompt + tools + push-to-talk) —
+  client-sent setup is ignored. Tool calls come back via `POST /api/voice/tool` (same dispatcher),
+  turns are saved via `POST /api/voice/turn` (`session_id` = `voice-<uuid>`). Server: `services/voice.js`,
+  `routes/voice.js`; prompt context from `services/assistantContext.js` (shared with chat). Client:
+  `lib/voice/` (audio, liveSession, engine) → `useVoiceStore` → `components/voice/VoiceOrb.jsx` in the
+  TopBar (hold orb or Ctrl+Alt+Space). Live API gotchas (REST token field is `bidiGenerateContentSetup`,
+  a tool call ends its own silent turn): `spikes/live-voice/FINDINGS.md`.
 - **Dates are answered by query, not vectors.** `services/agenda.js` (`listUpcoming`) merges tasks,
   application next-steps and events; it feeds the chat system prompt, `list_upcoming` and the Today
   timeline. Placement deadlines live on `applications.next_deadline` — never duplicate them as tasks.

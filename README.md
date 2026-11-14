@@ -12,6 +12,10 @@ memory. Built solo by Rama on a strict free-tier-only stack.
 
 ## What works
 
+- **Voice (Jarvis v1, in progress)** — hold the mic orb in the top bar (or Ctrl+Alt+Space) and
+  talk; Nexus answers out loud in about a second, uses the same tools as chat ("got the Amazon OA,
+  due Sunday 9 PM" updates the card), and stops the moment you talk over it. Gemini Live
+  (`gemini-3.8-live`, free tier); the API key never reaches the browser.
 - **⌘K capture** — "tell Nexus anything" from any page. One sentence ("Applied to Uber, OA
   Friday 6pm") becomes the right card/task/event; each action comes back as a confirmation chip.
 - **Today** — command centre: AI read on the day, a next-7-days timeline (tasks, application

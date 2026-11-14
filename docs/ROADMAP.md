@@ -60,10 +60,12 @@ None blocking. New ones get added here as they come up.
 | Item | Status | Notes |
 | --- | --- | --- |
 | Web Speech mic button (chat, ⌘K) | shipped | Chrome-only, one-shot dictation. |
-| Push-to-talk hotkey (global, via tray helper) | v1 | See section 6. |
-| Real-time voice conversation (Gemini Live) | v1 | `gemini-3.8-live` (free tier, current). Phase 0 spike: ~1 s to first spoken word incl. a tool call; setup 2–3 s, so pre-warm the session. See `spikes/live-voice/FINDINGS.md`. |
-| Barge-in (interrupt it mid-sentence) | v1 | Native to the Live API. |
-| Live transcript + action chips while speaking | v1 | Reuse `toolSummary.js` chips. |
+| Push-to-talk inside Nexus (hold orb or Ctrl+Alt+Space) | shipped | Phase 1. `components/voice/VoiceOrb.jsx`. |
+| Push-to-talk hotkey (global, via tray helper) | v1 | Phase 4. Spike works: `spikes/live-voice/tray.ps1`. See section 6. |
+| Real-time voice conversation (Gemini Live) | shipped | Phase 1. `gemini-3.8-live` (free tier). ~0.7–0.9 s to first spoken word, ~1.5 s with a tool call. Click the orb to pre-warm (setup 2–3 s). |
+| Barge-in (interrupt it mid-sentence) | shipped | Phase 1. Local playback stops at once; server confirms with `interrupted`. |
+| Live transcript + action chips while speaking | shipped | Phase 1. Shared `ActionChip` with ⌘K. Voice turns saved to conversations (memory). |
+| Session resumption across the ~10 min connection limit | v1 | Phase 1 reconnects fresh on the next press (in-session context lost; saved turns kept). |
 | Voice persona / choice of voice | next | |
 | Wake word ("Hey Nexus") | later | Needs an always-on local process. |
 | Hindi/Telugu code-mixing | later | v1 is English only. |
@@ -73,7 +75,7 @@ None blocking. New ones get added here as they come up.
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| 9 Nexus tools, 3-round tool chaining | shipped | `routes/chat.js`. |
+| 9 Nexus tools, 3-round tool chaining | shipped | `services/tools.js`, shared by chat and voice. |
 | Confirmation gate for risky tools | v1 | Per-tool risk level: safe / confirm / never. |
 | Action log ("what did you just do?") + undo where possible | v1 | Every voice action recorded with its utterance. |
 | Prompt-injection guard | v1 | Email bodies and web pages are data, never instructions; tools that read external content can't trigger sends in the same turn without confirmation. |
@@ -159,3 +161,6 @@ None blocking. New ones get added here as they come up.
   laptop only.
 - **2026-11-12** — Phase 0 spike: GO. Ephemeral tokens, push-to-talk, barge-in, voice tool call
   and the tray hotkey all verified (`spikes/live-voice/FINDINGS.md`).
+- **2026-11-14** — Phase 1 (voice core) built: voice orb + transcript panel, locked-setup tokens,
+  tools via the shared dispatcher, voice turns saved to memory. Also fixed model datetimes with no
+  offset being stored as UTC (affected text chat too). Not yet tested against live Supabase.
