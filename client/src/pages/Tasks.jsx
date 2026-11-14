@@ -15,6 +15,7 @@ import { EmptyState } from '../components/shared/EmptyState.jsx';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner.jsx';
 import { PageWrapper } from '../components/layout/PageWrapper.jsx';
 import { formatRelative, priorityColor } from '../lib/utils.js';
+import { useRefreshKey } from '../store/useRefreshStore.js';
 
 const COLUMN_LABELS = { todo: 'Todo', in_progress: 'In progress', done: 'Done' };
 
@@ -61,9 +62,11 @@ export default function Tasks() {
     }
   }, [setTasks, setLoading]);
 
+  // Refetch when voice, chat or ⌘K changes tasks behind this page's back.
+  const refreshKey = useRefreshKey('tasks');
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const filteredByColumn = useMemo(() => {
     const filtered = applyFilter(tasks, filter);

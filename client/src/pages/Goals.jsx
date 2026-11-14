@@ -13,6 +13,7 @@ import { EmptyState } from '../components/shared/EmptyState.jsx';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner.jsx';
 import { PageWrapper } from '../components/layout/PageWrapper.jsx';
 import { formatDate } from '../lib/utils.js';
+import { useRefreshKey } from '../store/useRefreshStore.js';
 
 const CATEGORY_INTENT = { academic: 'info', health: 'success', career: 'primary', personal: 'neutral' };
 
@@ -142,9 +143,11 @@ export default function Goals() {
     }
   }, [setGoals, setLoading]);
 
+  // Refetch when voice, chat or ⌘K changes goals behind this page's back.
+  const refreshKey = useRefreshKey('goals');
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const createGoal = async () => {
     if (!form.title.trim()) return;

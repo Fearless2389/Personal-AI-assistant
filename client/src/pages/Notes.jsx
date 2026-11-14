@@ -10,6 +10,7 @@ import { EmptyState } from '../components/shared/EmptyState.jsx';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner.jsx';
 import { PageWrapper } from '../components/layout/PageWrapper.jsx';
 import { formatRelative } from '../lib/utils.js';
+import { useRefreshKey } from '../store/useRefreshStore.js';
 
 export default function Notes() {
   const { notes, activeNoteId, semantic, loading, setNotes, setActive, upsert, remove, setLoading } = useNotesStore();
@@ -30,9 +31,11 @@ export default function Notes() {
     }
   }, [setNotes, setLoading, setActive, activeNoteId]);
 
+  // Refetch when voice, chat or ⌘K changes notes behind this page's back.
+  const refreshKey = useRefreshKey('notes');
   useEffect(() => {
     loadAll();
-  }, [loadAll]);
+  }, [loadAll, refreshKey]);
 
   // Debounced semantic search
   useEffect(() => {

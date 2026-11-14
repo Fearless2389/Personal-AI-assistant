@@ -12,6 +12,7 @@ import { Modal } from '../components/ui/Modal.jsx';
 import { EmptyState } from '../components/shared/EmptyState.jsx';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner.jsx';
 import { PageWrapper } from '../components/layout/PageWrapper.jsx';
+import { useRefreshKey } from '../store/useRefreshStore.js';
 
 function StatTile({ label, value, sub }) {
   return (
@@ -105,9 +106,11 @@ export default function Habits() {
     }
   }, [setHabits, setLoading]);
 
+  // Refetch when voice, chat or ⌘K changes habits behind this page's back.
+  const refreshKey = useRefreshKey('habits');
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const toggle = async (habit) => {
     setBusyId(habit.id);
