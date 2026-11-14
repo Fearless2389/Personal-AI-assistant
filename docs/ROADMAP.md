@@ -118,8 +118,24 @@ None blocking. New ones get added here as they come up.
 | Web search with sources | v1 | Gemini grounding with Google Search. |
 | Read + summarise a URL | v1 | Server-side fetch. |
 | Company research before an interview | v1 | Search + summarise into a note. |
-| Act on logged-in sites (portals, forms) | later | Needs your browser session, high risk. v1 is read-only. |
-| Track job postings / new openings | idea | |
+| Act on logged-in sites (portals, forms) | next | Moved into the browser agent track (section 6b). v1 stays read-only. |
+| Track job postings / new openings | next | Browser agent: watch portals for new drives, nudge in Nexus. |
+
+### 6b. Browser agent — the "Alma track" (after v1)
+
+Direction (2026-11-14): Nexus becomes an Alma-style agent (alma.inc: "sees your screen and steers any
+app"), but **browser first, with full control, behind the confirmation gate**. Once that is reliable,
+extend to local Windows apps (section 6).
+
+| Item | Status | Notes |
+| --- | --- | --- |
+| Agent-controlled browser with your logins | next | A dedicated Chromium profile driven locally (Playwright/CDP), so sessions persist and your daily browser is untouched. |
+| See → decide → act loop | next | Page screenshot + accessibility tree → Gemini picks an action (navigate, click, type, scroll, read) → repeat. Live step feed + screenshots in the voice panel. |
+| Gate every browser action by risk | next | Read/navigate = safe; submit, send, pay, delete, change password, accept/decline offer = confirm; banking/trading transfers and password-manager exports = never. Reuses `actionPolicy.js` + `action_log`. |
+| Prompt-injection guard for pages | next | Page text is data, never instructions; a page can't widen what the agent may do. |
+| Kill switch + step budget | next | Esc stops the browser mid-task; max steps per task; every step logged with a screenshot. |
+| Placement portal flows | next | Watch for new drives, pre-fill application forms, stop before Submit for your yes. First real use case. |
+| Local apps (Alma-style, whole screen) | later | Only after the browser agent is reliable. Windows UI Automation + screen vision. |
 
 ### 6. Laptop control (local agent) — hotkey in v1, the rest deferred
 
@@ -166,5 +182,7 @@ None blocking. New ones get added here as they come up.
 - **2026-11-14** — Phase 1 (voice core) built: voice orb + transcript panel, locked-setup tokens,
   tools via the shared dispatcher, voice turns saved to memory. Also fixed model datetimes with no
   offset being stored as UTC (affected text chat too). Verified against live Supabase and pushed.
+- **2026-11-14** — Added section 6b, the browser agent ("Alma track"): full browser control behind
+  the confirmation gate first, local apps later. Placement portals are the first use case.
 - **2026-11-14** — Phase 2 (safety layer) built: confirmation gate (calendar + SMS wait for a tap or a
   spoken yes), action log for voice and chat, Esc kill switch, recent actions in Settings.
