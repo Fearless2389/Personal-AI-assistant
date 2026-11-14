@@ -140,6 +140,17 @@ export const tools = [
             include_overdue: { type: 'BOOLEAN', description: 'Default true.' }
           }
         }
+      },
+      {
+        name: 'list_recent_actions',
+        description:
+          "What Nexus recently did (or was asked to do) on Rama's behalf, newest first: tool, status " +
+          '(executed, failed, awaiting_confirmation, cancelled, expired) and a summary. Use for ' +
+          '"what did you just do", "did that go through", "what is waiting for my OK".',
+        parameters: {
+          type: 'OBJECT',
+          properties: { limit: { type: 'NUMBER', description: 'How many, default 10.' } }
+        }
       }
     ]
   }

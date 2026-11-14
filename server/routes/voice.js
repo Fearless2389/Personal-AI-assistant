@@ -2,10 +2,9 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { supabaseAdmin } from '../services/supabase.js';
 import { embedAndStore } from '../services/memory.js';
-import { handleToolCall } from '../services/tools.js';
-import { loadAssistantContext } from '../services/assistantContext.js';
+import { runGuarded, resolvePending } from '../services/actionGate.js';
+import { loadAssistantContext, loadUserTz } from '../services/assistantContext.js';
 import { buildVoiceInstruction, voiceSetup, mintVoiceToken, VOICE_TOOL_NAMES } from '../services/voice.js';
-import { DEFAULT_TZ } from '../services/time.js';
 
 const router = Router();
 const MAX_TRANSCRIPT = 4000;
@@ -24,21 +23,33 @@ router.post('/session', requireAuth, async (req, res, next) => {
 });
 
 /**
- * POST /api/voice/tool  { name, args } → tool result
- * The browser relays each Live API tool call here; the same dispatcher as chat runs it.
+ * POST /api/voice/tool  { name, args, utterance?, sessionId? } → { result }
+ * The browser relays each Live API tool call here. Every call passes the
+ * confirmation gate (services/actionGate.js); `utterance` is what the user's
+ * microphone transcript said this turn — the only thing that can approve a
+ * pending action by voice.
  */
-router.post('/tool', requireAuth, async (req, res) => {
-  const { name, args = {} } = req.body ?? {};
+router.post('/tool', requireAuth, async (req, res, next) => {
+  const { name, args = {}, utterance = '', sessionId = null } = req.body ?? {};
   if (!VOICE_TOOL_NAMES.has(name)) return res.status(400).json({ error: `Unknown tool: ${name}` });
   if (typeof args !== 'object' || Array.isArray(args)) return res.status(400).json({ error: 'args must be an object' });
 
-  const { data: settings } = await supabaseAdmin
-    .from('user_settings')
-    .select('timezone')
-    .eq('id', req.user.id)
-    .maybeSingle();
-  const result = await handleToolCall(name, args, req.user.id, { tz: settings?.timezone || DEFAULT_TZ });
-  res.json({ result });
+  try {
+    const tz = await loadUserTz(req.user.id);
+    const result =
+      name === 'resolve_pending_action'
+        ? await resolvePending(req.user.id, {
+            id: args.confirmation_id || null,
+            decision: args.decision,
+            via: 'voice',
+            utterance,
+            tz
+          })
+        : await runGuarded(req.user.id, name, args, { tz, source: 'voice', utterance, sessionId });
+    res.json({ result });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**

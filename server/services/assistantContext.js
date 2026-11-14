@@ -3,6 +3,12 @@ import { listUpcoming } from './agenda.js';
 import { listHabitsWithToday } from './habitService.js';
 import { DEFAULT_TZ } from './time.js';
 
+/** The user's IANA timezone (user_settings.timezone), or the default. */
+export async function loadUserTz(userId) {
+  const { data } = await supabaseAdmin.from('user_settings').select('timezone').eq('id', userId).maybeSingle();
+  return data?.timezone || DEFAULT_TZ;
+}
+
 /**
  * Everything the assistant should know before the user says a word: persona,
  * timezone, the next 7 days of deadlines and today's open habits. Shared by

@@ -5,6 +5,7 @@ import { scheduleReminder } from './reminderService.js';
 import { logHabitByName } from './habitService.js';
 import { trackApplication, listApplications, summarize } from './applicationService.js';
 import { listUpcoming } from './agenda.js';
+import { listRecentActions } from './actionLog.js';
 import { DEFAULT_TZ, wallTimeToUtcIso } from './time.js';
 
 // Shared by text chat (routes/chat.js) and voice (routes/voice.js): one dispatcher,
@@ -18,7 +19,7 @@ export const MEMORY_THRESHOLD = 0.5;
 const DATETIME_ARGS = ['due_date', 'scheduled_at', 'start_time', 'end_time', 'next_deadline'];
 
 /** Pin offset-less model datetimes ("…T17:00:00") to the user's timezone. */
-function normalizeDates(args, tz) {
+export function normalizeDates(args, tz) {
   const out = { ...(args ?? {}) };
   for (const key of DATETIME_ARGS) if (key in out) out[key] = wallTimeToUtcIso(out[key], tz);
   return out;
@@ -151,6 +152,23 @@ export async function handleToolCall(name, rawArgs, userId, { tz = DEFAULT_TZ } 
       const { days_ahead = 7, include_overdue = true } = args ?? {};
       const items = await listUpcoming(userId, { daysAhead: days_ahead, includeOverdue: include_overdue, tz });
       return { ok: true, timezone: tz, count: items.length, items };
+    }
+
+    if (name === 'list_recent_actions') {
+      const { limit = 10 } = args ?? {};
+      const rows = await listRecentActions(userId, { limit: Math.min(Number(limit) || 10, 25) });
+      return {
+        ok: true,
+        count: rows.length,
+        actions: rows.map((r) => ({
+          tool: r.tool,
+          status: r.status,
+          summary: r.summary,
+          args: r.args,
+          via: r.source,
+          at: r.created_at
+        }))
+      };
     }
 
     return { ok: false, message: `Unknown tool: ${name}` };
