@@ -75,11 +75,13 @@ None blocking. New ones get added here as they come up.
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| 9 Nexus tools, 3-round tool chaining | shipped | `services/tools.js`, shared by chat and voice. |
-| Confirmation gate for risky tools | v1 | Per-tool risk level: safe / confirm / never. |
-| Action log ("what did you just do?") + undo where possible | v1 | Every voice action recorded with its utterance. |
+| 10 Nexus tools, 3-round tool chaining | shipped | `services/tools.js`, shared by chat and voice. |
+| Confirmation gate for risky tools | shipped | Phase 2. `actionPolicy.js` risk table (safe / confirm / never; unknown = confirm). Tap Confirm or say yes; the yes is checked against your mic transcript, not the model. 2-min expiry. |
+| Action log ("what did you just do?") | shipped | Phase 2. `action_log` (migration 006), voice + chat, Settings → Recent actions, `list_recent_actions` tool. |
+| Undo for logged actions | next | Log has what's needed (tool + args + result ids). |
+| Gate typed chat too | later | Chat logs but doesn't gate: the request is already typed by you. |
 | Prompt-injection guard | v1 | Email bodies and web pages are data, never instructions; tools that read external content can't trigger sends in the same turn without confirmation. |
-| Kill switch ("stop" cancels everything in flight) | v1 | |
+| Kill switch ("stop" cancels everything in flight) | shipped | Phase 2. Esc / Stop button silences Nexus and cancels every pending action; saying "stop" or "cancel" cancels via the model. A tool already running on the server finishes. |
 | Multi-step plans ("prep me for tomorrow's OA") | next | Plan → confirm → execute. |
 | Long-term preference learning | idea | |
 
@@ -163,4 +165,6 @@ None blocking. New ones get added here as they come up.
   and the tray hotkey all verified (`spikes/live-voice/FINDINGS.md`).
 - **2026-11-14** — Phase 1 (voice core) built: voice orb + transcript panel, locked-setup tokens,
   tools via the shared dispatcher, voice turns saved to memory. Also fixed model datetimes with no
-  offset being stored as UTC (affected text chat too). Not yet tested against live Supabase.
+  offset being stored as UTC (affected text chat too). Verified against live Supabase and pushed.
+- **2026-11-14** — Phase 2 (safety layer) built: confirmation gate (calendar + SMS wait for a tap or a
+  spoken yes), action log for voice and chat, Esc kill switch, recent actions in Settings.

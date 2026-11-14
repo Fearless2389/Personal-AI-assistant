@@ -25,7 +25,10 @@ memory. Built solo by Rama on a strict free-tier-only stack.
   cards in place ("got the Google OA" moves the existing card).
 - **Nexus noticed** — deterministic nudges (no AI quota): deadlines within 48h, passed steps,
   applications quiet for 10+ days, evening "due tomorrow". Dismiss or snooze.
-- **Chat** — streaming Gemini with memory + 9 tools, chaining up to 3 tool rounds per
+- **Confirm before acting** — anything that leaves Nexus (Google Calendar events, SMS reminders)
+  waits for your OK: tap Confirm or just say "yes". Esc stops everything. Every action from voice
+  and chat is logged; see it in Settings → Recent actions, or ask "what did you just do?".
+- **Chat** — streaming Gemini with memory + 10 tools, chaining up to 3 tool rounds per
   message. Every turn sees the next 7 days of deadlines straight from the database.
 - **Morning briefing** — timezone-correct, prioritises placement deadlines; scheduler pass
   generates it daily at your chosen hour (delivery channel pluggable — SMS/WhatsApp when configured).
@@ -72,6 +75,7 @@ nexus/
 ├── docs/PRD.md                  — product requirements
 ├── supabase/migrations/         — 001 schema · 002 calendar tokens · 003 calendar memory + SMS
 │                                  · 004 timezone + briefing · 005 applications + nudges
+│                                  · 006 action log
 ├── server/
 │   ├── index.js                 — Express entry, mounts /api/*, starts the scheduler
 │   ├── routes/                   — chat, dashboard, agenda, applications, nudges, notes, tasks,

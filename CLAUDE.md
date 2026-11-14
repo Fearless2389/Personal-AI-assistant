@@ -16,12 +16,23 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
 ## Key patterns
 
 - **Tools** live in one dispatcher shared by chat and voice: `server/services/tools.js` →
-  `handleToolCall`; declarations in `services/gemini.js`. Nine tools: create_note, create_task,
+  `handleToolCall`; declarations in `services/gemini.js`. Ten tools: create_note, create_task,
   create_calendar_event, schedule_reminder, log_habit, search_memory, track_application,
-  list_applications, list_upcoming. The chat loop chains up to `MAX_TOOL_ROUNDS` (3). New tool → add a
-  summary in `client/src/lib/toolSummary.js` and refresh keys in `store/useRefreshStore.js`.
-  `handleToolCall` pins offset-less model datetimes to the user's tz (`wallTimeToUtcIso`) — Gemini
-  emits `2026-11-16T17:00:00` with no offset; never pass model datetimes to the DB raw.
+  list_applications, list_upcoming, list_recent_actions (+ voice-only resolve_pending_action in
+  `services/voice.js`). The chat loop chains up to `MAX_TOOL_ROUNDS` (3). New tool → give it a risk level
+  in `services/actionPolicy.js` (unlisted = gated), a summary in `client/src/lib/toolSummary.js` and
+  refresh keys in `store/useRefreshStore.js`.
+- **Confirmation gate + action log** (`services/actionGate.js` → `runGuarded`): routes never call
+  `handleToolCall` directly. Risk levels (`safe` / `confirm` / `never`) and the yes/no rules are pure
+  functions in `actionPolicy.js` (tested: `npm test` in server/). A `confirm` tool is parked as an
+  `action_log` row (`awaiting_confirmation`) and runs only via `resolvePending`: a tap
+  (`POST /api/actions/:id/resolve`) or the user's own mic transcript passing `isAffirmative` — the model
+  can route a yes, never invent one. Status changes are compare-and-set (`actionLog.transition`) so a
+  double confirm runs once. Typed chat logs but is not gated (`gate: false`). Kill switch: Esc / Stop →
+  `engine.stopAll()` → `POST /api/actions/cancel-pending`.
+  Model datetimes are pinned to the user's tz ONCE, in `runGuarded` (`normalizeDates` →
+  `modelTimeToUtcIso`): Gemini emits `…T17:00:00` and sometimes `…T17:00:00Z` for "5 PM local" — both
+  are wall time. Never normalize stored args again (they're real UTC and would shift).
 - **Voice (Gemini Live)**: the browser streams audio straight to Google with a single-use token from
   `POST /api/voice/session`; the token **locks the whole setup** (prompt + tools + push-to-talk) —
   client-sent setup is ignored. Tool calls come back via `POST /api/voice/tool` (same dispatcher),
