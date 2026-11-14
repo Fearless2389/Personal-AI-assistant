@@ -1,4 +1,4 @@
-// Habit streak logic, shared by the habits route and the chat `log_habit` tool.
+// Habit streak logic, shared by the habits route and the assistant's manage_habit tool.
 import { supabaseAdmin } from './supabase.js';
 
 /** Local YYYY-MM-DD for a date (server timezone). */
@@ -64,37 +64,6 @@ export async function undoCheckIn(userId, habitId, { date = dayStr() } = {}) {
     .eq('logged_date', date);
   if (error) throw error;
   return recomputeStreak(userId, habitId);
-}
-
-/**
- * Used by the chat `log_habit` tool: find a habit by name (creating it if new),
- * then check it in for today.
- */
-export async function logHabitByName(userId, habitName) {
-  const name = String(habitName ?? '').trim();
-  if (!name) return { ok: false, message: 'habit_name is required.' };
-
-  let { data: habit } = await supabaseAdmin
-    .from('habits')
-    .select('id, name')
-    .eq('user_id', userId)
-    .ilike('name', name)
-    .maybeSingle();
-
-  let created = false;
-  if (!habit) {
-    const { data: inserted, error } = await supabaseAdmin
-      .from('habits')
-      .insert({ user_id: userId, name })
-      .select('id, name')
-      .single();
-    if (error) return { ok: false, error: error.message };
-    habit = inserted;
-    created = true;
-  }
-
-  const { streak } = await checkIn(userId, habit.id);
-  return { ok: true, habit: habit.name, created, streak };
 }
 
 /** List habits with a `done_today` flag for the given date. */

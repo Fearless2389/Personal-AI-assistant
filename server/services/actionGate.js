@@ -1,10 +1,10 @@
 // The confirmation gate: the one place every assistant tool call passes through
 // (voice and chat). Safe tools run and are logged; risky tools are parked in
 // action_log as 'awaiting_confirmation' and run only after an explicit yes — a tap
-// on Confirm, or your own spoken words. The model can ask, but it can never
-// approve its own action: a spoken yes is checked against your microphone's
-// transcript, which it does not write.
-import { handleToolCall, normalizeDates } from './tools.js';
+// on Confirm, or your own words. The model can ask, but it can never approve its
+// own action: a yes is checked against what you said (mic transcript) or typed,
+// which it does not write.
+import { handleToolCall, normalizeDates, prepareAction } from './tools.js';
 import { riskOf, isReadOnly, isAffirmative, isNegative, isFresh, describeAction } from './actionPolicy.js';
 import * as actionLog from './actionLog.js';
 import { DEFAULT_TZ, formatInTz } from './time.js';
@@ -22,31 +22,47 @@ async function record(userId, row) {
 }
 
 /**
- * Run a tool call through the gate.
- * opts: { tz, source: 'voice'|'chat', utterance, sessionId, gate = true }
- * gate=false still logs but never parks — used by typed chat, where the request is
- * already on screen in your own words (gating chat is a later roadmap item).
+ * The single entry for a model tool call, from voice or chat. resolve_pending_action
+ * answers a parked action from the user's own words; everything else goes through
+ * runGuarded. opts: { tz, source: 'voice'|'chat', utterance, sessionId }
  */
-export async function runGuarded(
-  userId,
-  name,
-  rawArgs,
-  { tz = DEFAULT_TZ, source, utterance, sessionId, gate = true } = {}
-) {
-  const args = normalizeDates(rawArgs, tz);
-  const risk = riskOf(name);
-  const base = { source, tool: name, args, risk, utterance, sessionId };
+export function dispatchAssistantTool(userId, name, args, { tz = DEFAULT_TZ, source, utterance, sessionId } = {}) {
+  if (name === 'resolve_pending_action') {
+    return resolvePending(userId, {
+      id: args?.confirmation_id || null,
+      decision: args?.decision,
+      via: source,
+      utterance,
+      tz
+    });
+  }
+  return runGuarded(userId, name, args, { tz, source, utterance, sessionId });
+}
+
+/**
+ * Run a tool call through the gate.
+ * opts: { tz, source: 'voice'|'chat', utterance, sessionId }
+ */
+export async function runGuarded(userId, name, rawArgs, { tz = DEFAULT_TZ, source, utterance, sessionId } = {}) {
+  let args = normalizeDates(rawArgs, tz);
+  const risk = riskOf(name, args);
+  const base = { source, tool: name, risk, utterance, sessionId };
 
   if (risk === 'never') {
-    await record(userId, { ...base, status: 'blocked', summary: describeAction(name, args, whenIn(tz)) });
+    await record(userId, { ...base, args, status: 'blocked', summary: describeAction(name, args, whenIn(tz)) });
     return { ok: false, error: 'Nexus is not allowed to do that.' };
   }
 
-  if (risk === 'confirm' && gate) {
+  if (risk === 'confirm') {
+    // Resolve the target first ("delete the resume task" -> which task, exactly), so
+    // the readback names it and the confirmed action can only touch that item.
+    const prep = await prepareAction(name, args, userId);
+    if (prep.result) return prep.result;
+    args = prep.args;
     const summary = describeAction(name, args, whenIn(tz));
     let row;
     try {
-      row = await actionLog.insertAction(userId, { ...base, status: 'awaiting_confirmation', summary });
+      row = await actionLog.insertAction(userId, { ...base, args, status: 'awaiting_confirmation', summary });
     } catch (err) {
       console.error('[actions] could not park action:', err.message);
       return { ok: false, error: 'Could not prepare that action. Nothing was done.' };
@@ -58,15 +74,16 @@ export async function runGuarded(
       summary,
       message:
         'NOT DONE YET. Read the summary back in one short sentence and ask the user to confirm. ' +
-        'They can tap Confirm or say yes. When they answer out loud, call resolve_pending_action. ' +
+        'They can tap Confirm, or say/type yes. When they answer in words, call resolve_pending_action. ' +
         'Never say it is done until resolve_pending_action reports it executed.'
     };
   }
 
   const result = await handleToolCall(name, args, userId, { tz });
-  if (!isReadOnly(name)) {
+  if (!isReadOnly(name, args)) {
     await record(userId, {
       ...base,
+      args,
       status: result?.ok === false ? 'failed' : 'executed',
       summary: result?.message ?? null,
       result
@@ -77,10 +94,11 @@ export async function runGuarded(
 
 /**
  * Approve or cancel a parked action.
- * via 'button': the decision is the tap itself.
- * via 'voice':  the decision comes from `utterance` (your transcribed words); the
- *               model's `decision` is only a hint and can never turn a non-yes into a yes.
- * id may be omitted for voice: the newest pending action is used.
+ * via 'button':         the decision is the tap itself.
+ * via 'voice' | 'chat': the decision comes from `utterance` (your transcribed or typed
+ *                       words); the model's `decision` is only a hint and can never turn
+ *                       a non-yes into a yes.
+ * id may be omitted: the newest pending action is used.
  */
 export async function resolvePending(userId, { id, decision, via, utterance, tz = DEFAULT_TZ }) {
   const row = id ? await actionLog.getAction(userId, id) : await actionLog.latestPending(userId);
@@ -99,7 +117,7 @@ export async function resolvePending(userId, { id, decision, via, utterance, tz 
     return out(row.status, { message: `Already ${row.status.replace('_', ' ')}.` });
 
   let wants = decision;
-  if (via === 'voice') {
+  if (via !== 'button') {
     if (isNegative(utterance)) wants = 'cancel';
     else if (wants === 'confirm' && !isAffirmative(utterance)) {
       return {

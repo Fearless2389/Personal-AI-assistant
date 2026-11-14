@@ -21,32 +21,8 @@ SPOKEN MODE (this conversation is out loud — these rules override the formatti
 - You are a capable general assistant as well as Rama's second brain. Answer general-knowledge questions (history, science, explanations, advice, stories) from your own knowledge, directly. Placement season is context, not a limit.
 - After a tool acts, confirm in one short sentence what you did. If a tool fails, say so plainly.
 - If you are interrupted, drop what you were saying and deal with the new request.
-- Only live information (today's news, prices, a specific web page) needs the web, which you can't reach yet, and you can't read email yet. Say so in one line only for those.
-- Some actions (adding to Google Calendar, texting a reminder) wait for Rama's OK: the tool returns needs_confirmation with a summary. Read the summary back in one sentence and ask "Should I go ahead?". Never say it is done until it has executed.
-- Call resolve_pending_action ONLY right after asking "Should I go ahead?" and only for Rama's reply to it (yes, no, cancel). Never call it for a new request, and never to confirm something on your own. If Rama asks for a change instead, cancel it and make the new request.
-- If Rama says "stop" or "cancel" with something pending, call resolve_pending_action with decision "cancel".`;
-
-// Voice-only tool: answers a pending confirmation. The server decides from Rama's
-// own transcribed words, so the model can route a yes but never invent one.
-const RESOLVE_PENDING = {
-  name: 'resolve_pending_action',
-  description:
-    'Answer a pending confirmation after Rama replies out loud. Use decision "confirm" when Rama said yes, ' +
-    '"cancel" for no, stop or cancel. The server checks what Rama actually said; if it was not a clear yes, it stays pending.',
-  parameters: {
-    type: 'OBJECT',
-    properties: {
-      confirmation_id: {
-        type: 'STRING',
-        description: 'From the needs_confirmation result. Optional: defaults to the newest pending action.'
-      },
-      decision: { type: 'STRING', enum: ['confirm', 'cancel'] }
-    },
-    required: ['decision']
-  }
-};
-
-const VOICE_TOOLS = [{ functionDeclarations: [...tools.flatMap((t) => t.functionDeclarations), RESOLVE_PENDING] }];
+- Only live information (today's news, prices, a specific web page) needs the web, which you can't reach yet. Say so in one line only for those. You can search and read Rama's email.
+- When something waits for Rama's OK, read the summary back in ONE spoken sentence ending "Should I go ahead?". Rama can answer out loud or tap Confirm.`;
 
 /** The full system prompt for a voice session, built from loadAssistantContext() output. */
 export function buildVoiceInstruction({ settings, tz, upcoming, todaysHabits }) {
@@ -72,7 +48,7 @@ export function voiceSetup(systemInstruction, { voice = 'Puck' } = {}) {
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } }
     },
     systemInstruction: { parts: [{ text: systemInstruction }] },
-    tools: VOICE_TOOLS,
+    tools,
     // Push-to-talk: the client marks speech with activityStart/activityEnd, and a
     // new activity interrupts the model mid-sentence (barge-in).
     realtimeInputConfig: {
@@ -116,4 +92,4 @@ export async function mintVoiceToken(setup) {
 }
 
 /** Tool names the voice client may ask the server to run — exactly the declared ones. */
-export const VOICE_TOOL_NAMES = new Set(VOICE_TOOLS[0].functionDeclarations.map((f) => f.name));
+export const VOICE_TOOL_NAMES = new Set(tools.flatMap((t) => t.functionDeclarations.map((f) => f.name)));

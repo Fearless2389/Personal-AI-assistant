@@ -1,4 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { MANAGE_DECLARATIONS } from './manageDeclarations.js';
+import { GOOGLE_DECLARATIONS } from './googleDeclarations.js';
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) console.warn('[gemini] Missing GEMINI_API_KEY in environment.');
@@ -80,17 +82,6 @@ export const tools = [
         }
       },
       {
-        name: 'log_habit',
-        description: 'Mark a habit as completed for today.',
-        parameters: {
-          type: 'OBJECT',
-          properties: {
-            habit_name: { type: 'STRING' }
-          },
-          required: ['habit_name']
-        }
-      },
-      {
         name: 'track_application',
         description:
           'Create or update a job/internship/placement application. If one already exists for the company ' +
@@ -151,7 +142,9 @@ export const tools = [
           type: 'OBJECT',
           properties: { limit: { type: 'NUMBER', description: 'How many, default 10.' } }
         }
-      }
+      },
+      ...MANAGE_DECLARATIONS,
+      ...GOOGLE_DECLARATIONS
     ]
   }
 ];

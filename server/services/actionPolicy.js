@@ -7,13 +7,28 @@
  *   safe    — runs at once (reads, and writes that stay inside Nexus)
  *   confirm — waits for an explicit yes (leaves Nexus: your Google account, your phone)
  *   never   — refused outright
- * Unknown tools are treated as `confirm`: a new tool is gated until someone decides.
+ * A tool with an `action` argument can set a level per action, with '*' as its
+ * default: deleting your own data waits for a yes, everything else runs at once.
+ * Unknown tools (and unknown actions without a '*') are treated as `confirm`: a new
+ * capability is gated until someone decides.
  */
+const DELETE_NEEDS_OK = Object.freeze({ delete: 'confirm', '*': 'safe' });
+
 export const RISK = Object.freeze({
   create_note: 'safe',
   create_task: 'safe',
-  log_habit: 'safe',
   track_application: 'safe',
+  manage_task: DELETE_NEEDS_OK,
+  manage_habit: DELETE_NEEDS_OK,
+  manage_note: DELETE_NEEDS_OK,
+  manage_goal: DELETE_NEEDS_OK,
+  manage_reminder: 'safe', // list, cancel — cancelling only removes a pending text
+  search_email: 'safe',
+  read_email: 'safe',
+  draft_email: 'safe', // lands in Drafts; nothing leaves the account
+  send_email: 'confirm', // always: it leaves your account and can't be unsent
+  manage_calendar_event: Object.freeze({ list: 'safe', '*': 'confirm' }), // your real calendar
+  resolve_pending_action: 'safe', // the gate itself decides; see actionGate.resolvePending
   search_memory: 'safe',
   list_applications: 'safe',
   list_upcoming: 'safe',
@@ -22,12 +37,29 @@ export const RISK = Object.freeze({
   schedule_reminder: 'confirm' // texts your phone later
 });
 
-export const riskOf = (name) => RISK[name] ?? 'confirm';
+export function riskOf(name, args = {}) {
+  const level = RISK[name];
+  if (!level) return 'confirm';
+  if (typeof level === 'string') return level;
+  return level[args?.action] ?? level['*'] ?? 'confirm';
+}
 
-// Tools that only look things up. They run without a log row — the action log is
-// "what Nexus did", and a lookup changes nothing.
-const READ_ONLY = new Set(['search_memory', 'list_applications', 'list_upcoming', 'list_recent_actions']);
-export const isReadOnly = (name) => READ_ONLY.has(name);
+// Lookups run without a log row — the action log is "what Nexus did", and a lookup
+// changes nothing. Whole tools, plus the list/read actions of manage_* tools.
+const READ_ONLY = new Set([
+  'search_memory',
+  'list_applications',
+  'list_upcoming',
+  'list_recent_actions',
+  'search_email',
+  'read_email'
+]);
+const READ_ACTIONS = new Set(['list', 'read']);
+export const isReadOnly = (name, args = {}) =>
+  READ_ONLY.has(name) || (name.startsWith('manage_') && READ_ACTIONS.has(args?.action));
+
+/** manage_task → 'task'. */
+export const entityOf = (name) => (name.startsWith('manage_') ? name.slice('manage_'.length) : null);
 
 /** A pending action can be approved for this long after it was proposed. */
 export const CONFIRM_TTL_MS = 2 * 60_000;
@@ -67,7 +99,32 @@ export function describeAction(name, args = {}, formatWhen = (iso) => iso) {
       return `Add "${args.title ?? 'an event'}" to your Google Calendar${when(args.start_time)}`;
     case 'schedule_reminder':
       return `Text you "${args.message ?? 'a reminder'}"${when(args.scheduled_at)}`;
+    case 'send_email': {
+      const body = String(args.body ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const preview = body.length > 90 ? `${body.slice(0, 90)}…` : body;
+      return `Email ${args.to}: "${args.subject || '(no subject)'}" — ${preview}`;
+    }
+    case 'manage_calendar_event': {
+      const label = `"${args.target_label ?? args.event ?? 'the event'}"`;
+      if (args.action === 'delete') return `Delete ${label}${when(args.target_start)} from your Google Calendar`;
+      const changes = [
+        args.new_title && `rename it "${args.new_title}"`,
+        args.start_time && `move it to ${formatWhen(args.start_time)}`,
+        args.location && `set the place to ${args.location}`
+      ].filter(Boolean);
+      return `Change ${label}: ${changes.join(', ') || 'update details'}`;
+    }
     default:
+      {
+        // manage_* deletes: target_label is pinned by the gate after it resolves the item.
+        const entity = entityOf(name);
+        if (entity && args.action === 'delete') {
+          return `Delete the ${entity} "${args.target_label ?? args[entity] ?? 'item'}"`;
+        }
+        return `Run ${name}`;
+      }
       return `Run ${name}`;
   }
 }

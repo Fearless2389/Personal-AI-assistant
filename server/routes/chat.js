@@ -4,7 +4,7 @@ import { supabaseAdmin } from '../services/supabase.js';
 import { getChatModel, streamTurn } from '../services/gemini.js';
 import { embedAndStore, retrieveMemory, buildSystemPrompt } from '../services/memory.js';
 import { MEMORY_THRESHOLD } from '../services/tools.js';
-import { runGuarded } from '../services/actionGate.js';
+import { dispatchAssistantTool } from '../services/actionGate.js';
 import { loadAssistantContext } from '../services/assistantContext.js';
 import { formatInTz } from '../services/time.js';
 
@@ -114,13 +114,12 @@ router.post('/', requireAuth, async (req, res) => {
 
       const responseParts = [];
       for (const call of calls) {
-        // Logged, not gated: typed chat puts the request on screen in your own words.
-        const result = await runGuarded(userId, call.name, call.args ?? {}, {
+        // Same gate as voice: risky actions wait for a tap or a typed yes.
+        const result = await dispatchAssistantTool(userId, call.name, call.args ?? {}, {
           tz,
           source: 'chat',
           utterance: message,
-          sessionId,
-          gate: false
+          sessionId
         });
         sse(res, { type: 'tool_result', name: call.name, args: call.args ?? {}, result });
         responseParts.push({ functionResponse: { name: call.name, response: { result } } });

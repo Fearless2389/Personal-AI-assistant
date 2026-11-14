@@ -2,7 +2,8 @@ import { supabaseAdmin } from './supabase.js';
 import { embedAndStore, retrieveMemory } from './memory.js';
 import * as calendarService from './calendarService.js';
 import { scheduleReminder } from './reminderService.js';
-import { logHabitByName } from './habitService.js';
+import { MANAGE_HANDLERS, prepareAction as prepareManaged } from './manageTools.js';
+import { GOOGLE_HANDLERS, prepareGoogleAction, googleErrorResult } from './googleTools.js';
 import { trackApplication, listApplications, summarize } from './applicationService.js';
 import { listUpcoming } from './agenda.js';
 import { listRecentActions } from './actionLog.js';
@@ -115,33 +116,9 @@ export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {
           message: 'Event added to your Google Calendar.'
         };
       } catch (err) {
-        if (err.message === 'connection_broken') {
-          return { ok: false, error: 'Google Calendar connection expired — please reconnect on the Calendar page.' };
-        }
-        if (err.message === 'not_connected') {
-          return { ok: false, error: 'Google Calendar is not connected — open the Calendar page and click Connect.' };
-        }
-        if (err.message === 'rate_limited') {
-          return { ok: false, error: 'Google Calendar is rate-limiting us right now — try again in a few seconds.' };
-        }
-        console.error('[chat] create_calendar_event failed:', err);
-        return { ok: false, error: err.message ?? 'Calendar insert failed' };
+        return googleErrorResult(err, 'Google Calendar');
       }
     }
-    if (name === 'log_habit') {
-      const { habit_name } = args ?? {};
-      const result = await logHabitByName(userId, habit_name);
-      if (result.ok) {
-        return {
-          ok: true,
-          habit: result.habit,
-          streak: result.streak,
-          message: `Logged "${result.habit}"${result.created ? ' (new habit)' : ''}. Streak: ${result.streak} day${result.streak === 1 ? '' : 's'}.`
-        };
-      }
-      return result;
-    }
-
     if (name === 'track_application') {
       return await trackApplication(userId, args ?? {});
     }
@@ -175,9 +152,22 @@ export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {
       };
     }
 
+    const handler = MANAGE_HANDLERS[name] ?? GOOGLE_HANDLERS[name];
+    if (handler) return await handler(userId, args ?? {}, { tz });
+
     return { ok: false, message: `Unknown tool: ${name}` };
   } catch (err) {
     console.error('[chat] tool', name, 'failed:', err.message);
     return { ok: false, error: err.message };
   }
+}
+
+/**
+ * Gate hook: before a risky action is parked, resolve and pin what it will touch
+ * (which task/event, which recipients) so the readback is exact.
+ * → { args } | { result } to hand back instead of parking.
+ */
+export function prepareAction(name, args, userId) {
+  if (GOOGLE_HANDLERS[name]) return prepareGoogleAction(name, args, userId);
+  return prepareManaged(name, args, userId);
 }

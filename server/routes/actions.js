@@ -16,9 +16,15 @@ router.get('/', requireAuth, async (req, res, next) => {
   }
 });
 
-/** POST /api/actions/:id/resolve { decision: 'confirm' | 'cancel' } → result. The tap is the decision. */
+/**
+ * POST /api/actions/:id/resolve { decision: 'confirm' | 'cancel', utterance? } → result.
+ * Without `utterance` the tap is the decision. With it (the voice client's backstop
+ * when the model missed a spoken answer), the user's words decide, exactly as for
+ * resolve_pending_action: a clear yes confirms, a clear no cancels, else it waits.
+ */
 router.post('/:id/resolve', requireAuth, async (req, res, next) => {
-  const { decision } = req.body ?? {};
+  const { decision, utterance } = req.body ?? {};
+  const spoken = typeof utterance === 'string' && utterance.trim() !== '';
   if (!UUID.test(req.params.id)) return res.status(400).json({ error: 'Invalid action id' });
   if (!['confirm', 'cancel'].includes(decision)) {
     return res.status(400).json({ error: 'decision must be "confirm" or "cancel"' });
@@ -27,7 +33,8 @@ router.post('/:id/resolve', requireAuth, async (req, res, next) => {
     const result = await resolvePending(req.user.id, {
       id: req.params.id,
       decision,
-      via: 'button',
+      via: spoken ? 'voice' : 'button',
+      utterance: spoken ? utterance : undefined,
       tz: await loadUserTz(req.user.id)
     });
     res.json({ result });

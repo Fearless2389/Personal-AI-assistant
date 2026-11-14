@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { supabaseAdmin } from '../services/supabase.js';
 import { embedAndStore } from '../services/memory.js';
-import { runGuarded, resolvePending } from '../services/actionGate.js';
+import { dispatchAssistantTool } from '../services/actionGate.js';
 import { loadAssistantContext, loadUserTz } from '../services/assistantContext.js';
 import { buildVoiceInstruction, voiceSetup, mintVoiceToken, VOICE_TOOL_NAMES } from '../services/voice.js';
 
@@ -36,16 +36,7 @@ router.post('/tool', requireAuth, async (req, res, next) => {
 
   try {
     const tz = await loadUserTz(req.user.id);
-    const result =
-      name === 'resolve_pending_action'
-        ? await resolvePending(req.user.id, {
-            id: args.confirmation_id || null,
-            decision: args.decision,
-            via: 'voice',
-            utterance,
-            tz
-          })
-        : await runGuarded(req.user.id, name, args, { tz, source: 'voice', utterance, sessionId });
+    const result = await dispatchAssistantTool(req.user.id, name, args, { tz, source: 'voice', utterance, sessionId });
     res.json({ result });
   } catch (err) {
     next(err);
