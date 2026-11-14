@@ -87,8 +87,15 @@ export const nudgesApi = {
 
 export const voiceApi = {
   session: () => request('/api/voice/session', { method: 'POST' }),
-  tool: (name, args) => request('/api/voice/tool', { method: 'POST', body: { name, args } }),
+  tool: (name, args, { utterance, sessionId } = {}) =>
+    request('/api/voice/tool', { method: 'POST', body: { name, args, utterance, sessionId } }),
   turn: ({ sessionId, heard, said }) => request('/api/voice/turn', { method: 'POST', body: { sessionId, heard, said } })
+};
+
+export const actionsApi = {
+  list: (limit = 20) => request(`/api/actions?limit=${limit}`),
+  resolve: (id, decision) => request(`/api/actions/${id}/resolve`, { method: 'POST', body: { decision } }),
+  cancelPending: () => request('/api/actions/cancel-pending', { method: 'POST' })
 };
 
 export const habitsApi = {

@@ -9,7 +9,8 @@ import {
   Repeat,
   Search,
   ListChecks,
-  AlertCircle
+  AlertCircle,
+  History
 } from 'lucide-react';
 import { stageMeta } from './applications.js';
 
@@ -83,6 +84,8 @@ export function summarizeTool(name, args = {}, result = {}) {
       };
     case 'list_applications':
       return { icon: Briefcase, ok: true, text: `Checked the pipeline: ${result.count ?? 0} application(s)` };
+    case 'list_recent_actions':
+      return { icon: History, ok: true, text: `Checked recent actions: ${result.count ?? 0}` };
     default:
       return { icon: ListChecks, ok: true, text: name };
   }

@@ -1,4 +1,4 @@
-// Settings — persona, phone/SMS, wake time, Google Calendar connection. Real (Phase 4).
+// Settings — persona, phone/SMS, wake time, Google Calendar connection, recent actions log.
 import { useCallback, useEffect, useState } from 'react';
 import { settingsApi, calendarApi } from '../lib/api.js';
 import { Card, CardTitle } from '../components/ui/Card.jsx';
@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 import { Input } from '../components/ui/Input.jsx';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner.jsx';
+import { RecentActions } from '../components/settings/RecentActions.jsx';
 import { PageWrapper } from '../components/layout/PageWrapper.jsx';
 import { useUser } from '../hooks/useSupabase.js';
 import { supabase } from '../lib/supabase.js';
@@ -202,6 +203,13 @@ export default function Settings() {
             className="max-w-[160px]"
           />
         </Field>
+      </Section>
+
+      <Section
+        title="Recent actions"
+        description="What Nexus did for you from voice and chat. Calendar events and SMS reminders wait for your OK first."
+      >
+        <RecentActions />
       </Section>
     </PageWrapper>
   );

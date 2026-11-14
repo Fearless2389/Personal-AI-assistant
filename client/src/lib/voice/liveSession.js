@@ -80,6 +80,11 @@ export class LiveSession {
     this.send({ realtimeInput: { activityEnd: {} } });
   }
 
+  /** A typed (not spoken) user message, e.g. "the user tapped Confirm". The model answers out loud. */
+  sendText(text) {
+    this.send({ realtimeInput: { text } });
+  }
+
   toolResponse(functionResponses) {
     this.send({ toolResponse: { functionResponses } });
   }

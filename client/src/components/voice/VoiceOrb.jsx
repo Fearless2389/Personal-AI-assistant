@@ -4,7 +4,8 @@
 import { useEffect, useRef } from 'react';
 import { Mic, Loader2, AlertCircle } from 'lucide-react';
 import { useVoiceStore } from '../../store/useVoiceStore.js';
-import { pressStart, pressEnd, warmUp, shutdown } from '../../lib/voice/engine.js';
+import { pressStart, pressEnd, warmUp, shutdown, stopAll } from '../../lib/voice/engine.js';
+import { hasWaiting } from '../../lib/voice/confirmations.js';
 import { cn } from '../../lib/utils.js';
 import { VoicePanel } from './VoicePanel.jsx';
 
@@ -54,6 +55,18 @@ export function VoiceOrb() {
       window.removeEventListener('keyup', onUp);
       window.removeEventListener('blur', release);
     };
+  }, []);
+
+  // Kill switch: Esc silences Nexus and cancels anything waiting for a yes. Only
+  // claims Esc while voice has something to stop, so dialogs keep their Esc.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      const { status: s } = useVoiceStore.getState();
+      if (['speaking', 'thinking'].includes(s) || hasWaiting()) stopAll();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   useEffect(() => () => shutdown(), []); // leaving the app (sign-out) ends the session

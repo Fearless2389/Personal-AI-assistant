@@ -10,6 +10,7 @@ import { useRefreshStore, keysForTool } from '../../store/useRefreshStore.js';
 import { voiceApi } from '../api.js';
 import { MicCapture, PcmPlayer } from './audio.js';
 import { LiveSession } from './liveSession.js';
+import { trackParked, applyResolution, resolveByTap, cancelAllWaiting } from './confirmations.js';
 
 // Close the socket and release the mic after this long without talking, so the
 // browser's recording indicator doesn't stay on and the free quota isn't held open.
@@ -32,6 +33,7 @@ let backlog = []; // mic chunks captured before the socket was ready
 let heardId = null; // turn receiving the user's transcript
 let answerId = null; // turn receiving the model's transcript, tools and audio
 let toolTurnOpen = false; // a toolCall arrived; its silent turnComplete is not the answer
+let muted = false; // kill switch pressed: drop the rest of the current answer's audio
 let idleTimer = null;
 
 const setStatus = (status, error = null) => set({ status, error });
@@ -113,6 +115,7 @@ export async function pressStart() {
   if (talking) return;
   talking = true;
   serverActive = false;
+  muted = false;
   backlog = [];
   clearTimeout(idleTimer);
   player?.stop(); // barge-in: silence locally at once; the server confirms with `interrupted`
@@ -174,8 +177,51 @@ export async function warmUp() {
   }
 }
 
-/** End the voice session: close the socket and release the microphone. */
+/**
+ * Kill switch (Esc, or the Stop button): silence Nexus now, drop the rest of what it
+ * was saying, and cancel every action still waiting for a yes. The session stays
+ * open, so the next press works straight away.
+ */
+export function stopAll() {
+  player?.stop();
+  muted = true;
+  if (['speaking', 'thinking'].includes(get().status)) setStatus(session?.ready ? 'ready' : 'off');
+  return cancelAllWaiting();
+}
+
+/**
+ * The Confirm / Cancel buttons on a parked action. The server runs (or drops) it,
+ * then Nexus is told what happened so it can say so out loud.
+ */
+export async function confirmByTap(id, decision) {
+  const res = await resolveByTap(id, decision);
+  if (!res) return;
+  const outcome = res.error ? `${res.status} (${res.error})` : res.status;
+  tellModel(
+    decision === 'confirm' ? 'Tapped Confirm' : 'Tapped Cancel',
+    `[Rama tapped ${decision === 'confirm' ? 'Confirm' : 'Cancel'} for: ${res.summary}. Outcome: ${outcome}. ` +
+      'Acknowledge it in one short sentence. Do not call resolve_pending_action for this one.]'
+  );
+}
+
+/** Send a non-spoken cue to the model as its own turn, so its reply is shown under it. */
+function tellModel(cue, text) {
+  if (!session?.ready || talking) return;
+  persistTurn(answerId);
+  const id = crypto.randomUUID();
+  heardId = answerId = id;
+  set((s) => ({
+    turns: [...s.turns, { id, heard: '', cue, said: '', actions: [], interrupted: false }].slice(-MAX_TURNS)
+  }));
+  muted = false;
+  setStatus('thinking');
+  session.sendText(text);
+  scheduleIdle();
+}
+
+/** End the voice session: close the socket, release the microphone, cancel anything pending. */
 export function shutdown() {
+  cancelAllWaiting();
   clearTimeout(idleTimer);
   persistTurn(answerId);
   talking = false;
@@ -218,6 +264,23 @@ function persistTurn(id) {
 
 // ---- tools ----------------------------------------------------------------------
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * What the user said this turn (their mic transcript, never the model's words).
+ * A spoken yes is approved only from this, and the transcript can trail the
+ * tool call by a beat, so a confirmation waits up to ~1.5 s for it.
+ */
+async function utteranceFor(turnId, name) {
+  const read = () => findTurn(turnId)?.heard?.trim() ?? '';
+  let text = read();
+  for (let i = 0; name === 'resolve_pending_action' && !text && i < 15; i++) {
+    await sleep(100);
+    text = read();
+  }
+  return text;
+}
+
 const callKey = (c) => `${c.name}:${JSON.stringify(c.args ?? {}, Object.keys(c.args ?? {}).sort())}`;
 
 /**
@@ -235,12 +298,14 @@ async function runTools(calls, turnId) {
     const { name, args = {} } = group[0];
     let result;
     try {
-      ({ result } = await voiceApi.tool(name, args));
+      const utterance = await utteranceFor(turnId, name);
+      ({ result } = await voiceApi.tool(name, args, { utterance, sessionId }));
     } catch (err) {
       result = { ok: false, error: err.message };
     }
     patchTurn(turnId, (t) => ({ ...t, actions: [...t.actions, { name, args, result }] }));
-    if (result?.ok !== false) useRefreshStore.getState().bump(...keysForTool(name));
+    if (name === 'resolve_pending_action') applyResolution(result);
+    else if (!trackParked(result) && result?.ok !== false) useRefreshStore.getState().bump(...keysForTool(name));
     for (const c of group) responses.push({ id: c.id, name, response: { result } });
   }
   session?.toolResponse(responses);
@@ -252,7 +317,7 @@ function handlersFor(self) {
   const live = () => self() === session; // ignore events from a session we've replaced
   return {
     onAudio(b64) {
-      if (!live() || talking) return; // the user is already talking over it
+      if (!live() || talking || muted) return; // the user is talking over it, or pressed stop
       if (get().status !== 'speaking') setStatus('speaking');
       player.play(b64);
     },
@@ -280,6 +345,7 @@ function handlersFor(self) {
         toolTurnOpen = false;
         return;
       }
+      muted = false;
       if (findTurn(answerId)?.said) persistTurn(answerId);
       if (!talking && get().status === 'thinking') setStatus('ready');
     },

@@ -3,8 +3,10 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVoiceStore } from '../../store/useVoiceStore.js';
-import { clearTranscript, shutdown } from '../../lib/voice/engine.js';
+import { clearTranscript, shutdown, stopAll } from '../../lib/voice/engine.js';
+import { isWaiting } from '../../lib/voice/confirmations.js';
 import { ActionChip } from '../shared/ActionChip.jsx';
+import { ConfirmCard } from './ConfirmCard.jsx';
 import { cn } from '../../lib/utils.js';
 
 const LABEL = {
@@ -16,6 +18,10 @@ const LABEL = {
   speaking: 'Speaking. Press to interrupt',
   error: 'Voice hit a problem'
 };
+
+// resolve_pending_action only updates a confirmation card, so it gets no chip of
+// its own (the card already shows the outcome).
+const visibleActions = (actions) => actions.filter((a) => a.name !== 'resolve_pending_action');
 
 const DOT = {
   off: 'bg-text-muted',
@@ -31,6 +37,7 @@ export function VoicePanel({ onClose }) {
   const status = useVoiceStore((s) => s.status);
   const error = useVoiceStore((s) => s.error);
   const turns = useVoiceStore((s) => s.turns);
+  const anyWaiting = useVoiceStore((s) => Object.values(s.confirmations).some(isWaiting));
   const navigate = useNavigate();
   const listRef = useRef(null);
 
@@ -71,34 +78,54 @@ export function VoicePanel({ onClose }) {
             Amazon OA, due Sunday 9 PM&rdquo;.
           </p>
         ) : (
-          turns.map((t) => (
-            <div key={t.id} className="space-y-1.5">
-              <p className="text-sm">
-                <span className="text-text-muted">You · </span>
-                <span className="text-text-primary">{t.heard.trim() || '…'}</span>
-              </p>
-              {t.actions.length > 0 && (
-                <ul className="space-y-1.5">
-                  {t.actions.map((a, i) => (
-                    <li key={i}>
-                      <ActionChip action={a} onNavigate={go} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {t.said.trim() && (
+          turns.map((t) => {
+            const shown = visibleActions(t.actions);
+            return (
+              <div key={t.id} className="space-y-1.5">
                 <p className="text-sm">
-                  <span className="text-nexus-primary">Nexus · </span>
-                  <span className="text-text-secondary">{t.said.trim()}</span>
-                  {t.interrupted && <span className="text-text-muted"> (interrupted)</span>}
+                  <span className="text-text-muted">You · </span>
+                  {t.cue && !t.heard.trim() ? (
+                    <span className="text-text-muted italic">{t.cue}</span>
+                  ) : (
+                    <span className="text-text-primary">{t.heard.trim() || '…'}</span>
+                  )}
                 </p>
-              )}
-            </div>
-          ))
+                {shown.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {shown.map((a, i) => (
+                      <li key={i}>
+                        {a.result?.needs_confirmation ? (
+                          <ConfirmCard id={a.result.confirmation_id} />
+                        ) : (
+                          <ActionChip action={a} onNavigate={go} />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {t.said.trim() && (
+                  <p className="text-sm">
+                    <span className="text-nexus-primary">Nexus · </span>
+                    <span className="text-text-secondary">{t.said.trim()}</span>
+                    {t.interrupted && <span className="text-text-muted"> (interrupted)</span>}
+                  </p>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
       <div className="px-3 py-2 border-t border-surface-border flex justify-end gap-2">
+        {(busy || anyWaiting) && status !== 'listening' && (
+          <button
+            onClick={stopAll}
+            title="Stop talking and cancel anything waiting for your OK (Esc)"
+            className="text-xs text-text-secondary hover:text-danger px-2 py-1 mr-auto"
+          >
+            Stop <kbd className="hidden sm:inline font-mono text-[10px] text-text-muted">Esc</kbd>
+          </button>
+        )}
         {turns.length > 0 && !busy && (
           <button onClick={clearTranscript} className="text-xs text-text-muted hover:text-text-secondary px-2 py-1">
             Clear
