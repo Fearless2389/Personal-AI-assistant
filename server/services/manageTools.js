@@ -9,6 +9,7 @@ import { embedAndStore } from './memory.js';
 import { checkIn, undoCheckIn, listHabitsWithToday } from './habitService.js';
 import { recomputeProgress } from './goalService.js';
 import { localDateKey } from './time.js';
+import { snapshotForDelete, snapshotRow, restoreStep, deleteStep } from './undo.js';
 
 const LIST_LIMIT = 25;
 const MAX_NOTE_READ = 4000;
@@ -83,8 +84,9 @@ export async function prepareAction(name, args, userId) {
 }
 
 async function deleteRow(kind, userId, row) {
+  const undo = await snapshotForDelete(KINDS[kind].table, row.id, userId); // the row (+ logs/milestones) to put back
   must(await supabaseAdmin.from(KINDS[kind].table).delete().eq('id', row.id).eq('user_id', userId));
-  return { ok: true, message: `Deleted the ${kind} "${KINDS[kind].label(row)}".` };
+  return { ok: true, message: `Deleted the ${kind} "${KINDS[kind].label(row)}".`, undo };
 }
 
 const unknownAction = (kind, action) => fail(`Unknown action "${action}" for ${kind}s.`);
@@ -118,6 +120,7 @@ async function manageTask(userId, args) {
       return fail('Nothing to change: pass new_title, due_date, priority or description.');
   } else return unknownAction('task', args.action);
 
+  const before = await snapshotRow('tasks', t.row.id, userId);
   const task = must(
     await supabaseAdmin
       .from('tasks')
@@ -128,10 +131,30 @@ async function manageTask(userId, args) {
       .single()
   );
   const verb = { complete: 'Marked done', reopen: 'Reopened', update: 'Updated' }[args.action];
-  return { ok: true, action: args.action, task, message: `${verb}: "${task.title}".` };
+  return {
+    ok: true,
+    action: args.action,
+    task,
+    message: `${verb}: "${task.title}".`,
+    undo: [restoreStep('tasks', before, [...Object.keys(patch), 'updated_at'])]
+  };
 }
 
 // ---- habits ------------------------------------------------------------------------
+
+/** Was the habit already ticked on this date? (so an undo never removes an earlier tick) */
+async function loggedOn(userId, habitId, date) {
+  const rows = must(
+    await supabaseAdmin
+      .from('habit_logs')
+      .select('id')
+      .eq('habit_id', habitId)
+      .eq('user_id', userId)
+      .eq('logged_date', date)
+      .limit(1)
+  );
+  return rows.length > 0;
+}
 
 async function createHabit(userId, name, frequency = 'daily') {
   const existing = pickByName(await loadRows('habit', userId), name, KINDS.habit.label);
@@ -166,7 +189,8 @@ async function manageHabit(userId, args, { tz }) {
       action: 'create',
       habit: habit.name,
       created,
-      message: created ? `Now tracking "${habit.name}".` : `Already tracking "${habit.name}".`
+      message: created ? `Now tracking "${habit.name}".` : `Already tracking "${habit.name}".`,
+      ...(created && { undo: [deleteStep('habits', habit.id)] })
     };
   }
 
@@ -182,25 +206,33 @@ async function manageHabit(userId, args, { tz }) {
 
   if (args.action === 'delete') return deleteRow('habit', userId, habit);
   if (args.action === 'check_in') {
+    const already = await loggedOn(userId, habit.id, date);
     const { streak } = await checkIn(userId, habit.id, { date });
     const s = `Streak: ${streak} day${streak === 1 ? '' : 's'}.`;
+    // Undo: a habit started by this check-in goes away; otherwise just today's tick.
+    let undo = null;
+    if (created) undo = [deleteStep('habits', habit.id)];
+    else if (!already) undo = [{ op: 'habit_uncheck', habit_id: habit.id, date }];
     return {
       ok: true,
       action: 'check_in',
       habit: habit.name,
       created,
       streak,
-      message: `Logged "${habit.name}"${created ? ' (new habit)' : ''}. ${s}`
+      message: `Logged "${habit.name}"${created ? ' (new habit)' : ''}. ${s}`,
+      ...(undo && { undo })
     };
   }
   if (args.action === 'undo_check_in') {
+    const was = await loggedOn(userId, habit.id, date);
     const { streak } = await undoCheckIn(userId, habit.id, { date });
     return {
       ok: true,
       action: 'undo_check_in',
       habit: habit.name,
       streak,
-      message: `Unchecked "${habit.name}" for today.`
+      message: `Unchecked "${habit.name}" for today.`,
+      ...(was && { undo: [{ op: 'habit_check', habit_id: habit.id, date }] })
     };
   }
   return unknownAction('habit', args.action);
@@ -244,7 +276,8 @@ async function manageNote(userId, args) {
       ok: true,
       action: 'append',
       title: KINDS.note.label(note),
-      message: `Added to "${KINDS.note.label(note)}".`
+      message: `Added to "${KINDS.note.label(note)}".`,
+      undo: [restoreStep('notes', note, ['content'])]
     };
   }
   return unknownAction('note', args.action);
@@ -298,7 +331,13 @@ async function manageGoal(userId, args) {
         .select('id, title, target_date')
         .single()
     );
-    return { ok: true, action: 'create', goal: goal.title, message: `New goal: "${goal.title}".` };
+    return {
+      ok: true,
+      action: 'create',
+      goal: goal.title,
+      message: `New goal: "${goal.title}".`,
+      undo: [deleteStep('goals', goal.id)]
+    };
   }
 
   const t = await findTarget('goal', userId, args);
@@ -308,25 +347,34 @@ async function manageGoal(userId, args) {
 
   if (args.action === 'add_milestone') {
     if (!args.milestone?.trim()) return fail('Pass the milestone in "milestone".');
-    must(
-      await supabaseAdmin.from('goal_milestones').insert({
-        goal_id: goal.id,
-        user_id: userId,
-        title: args.milestone.trim(),
-        due_date: dateOnly(args.milestone_due)
-      })
+    const added = must(
+      await supabaseAdmin
+        .from('goal_milestones')
+        .insert({
+          goal_id: goal.id,
+          user_id: userId,
+          title: args.milestone.trim(),
+          due_date: dateOnly(args.milestone_due)
+        })
+        .select('id')
+        .single()
     );
     await recomputeProgress(userId, goal.id);
     return {
       ok: true,
       action: 'add_milestone',
       goal: goal.title,
-      message: `Added "${args.milestone.trim()}" to "${goal.title}".`
+      message: `Added "${args.milestone.trim()}" to "${goal.title}".`,
+      undo: [deleteStep('goal_milestones', added.id), { op: 'recompute_goal', goal_id: goal.id }]
     };
   }
   if (args.action === 'complete_milestone') {
     const ms = must(
-      await supabaseAdmin.from('goal_milestones').select('id, title').eq('goal_id', goal.id).eq('user_id', userId)
+      await supabaseAdmin
+        .from('goal_milestones')
+        .select('id, title, completed, completed_at')
+        .eq('goal_id', goal.id)
+        .eq('user_id', userId)
     );
     const hit = pickByName(ms, args.milestone);
     if (hit.status === 'ambiguous') {
@@ -350,7 +398,10 @@ async function manageGoal(userId, args) {
       ok: true,
       action: 'complete_milestone',
       goal: goal.title,
-      message: `Done: "${hit.row.title}" (${goal.title}).`
+      message: `Done: "${hit.row.title}" (${goal.title}).`,
+      ...(!hit.row.completed && {
+        undo: [restoreStep('goal_milestones', hit.row, ['completed', 'completed_at']), { op: 'recompute_goal', goal_id: goal.id }]
+      })
     };
   }
   return unknownAction('goal', args.action);
@@ -385,7 +436,12 @@ async function manageReminder(userId, args) {
         .maybeSingle()
     );
     return done
-      ? { ok: true, action: 'cancel', message: `Cancelled the reminder "${t.row.message}".` }
+      ? {
+          ok: true,
+          action: 'cancel',
+          message: `Cancelled the reminder "${t.row.message}".`,
+          undo: [{ op: 'reinstate_reminder', id: t.row.id }]
+        }
       : fail('That reminder was already sent or cancelled.');
   }
   return unknownAction('reminder', args.action);

@@ -105,5 +105,19 @@ export const MANAGE_DECLARATIONS = [
       },
       required: ['decision']
     }
+  },
+  {
+    name: 'undo_action',
+    description:
+      'Reverse something Nexus did to Rama\'s own data ("undo that", "take that back", "I didn\'t mean that"): ' +
+      'removes a task, note, habit, goal, milestone or application it created, puts back an edit or a deleted item, ' +
+      'un-checks a habit, brings back a cancelled reminder. Default: the newest action. Calendar changes, emails and ' +
+      'opened websites cannot be undone. Call it again to undo the one before.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        action_id: { type: 'STRING', description: 'From list_recent_actions, to undo an older one. Optional.' }
+      }
+    }
   }
 ];

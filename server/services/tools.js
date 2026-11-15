@@ -5,11 +5,13 @@ import { scheduleReminder } from './reminderService.js';
 import { MANAGE_HANDLERS, prepareAction as prepareManaged } from './manageTools.js';
 import { GOOGLE_HANDLERS, prepareGoogleAction, googleErrorResult } from './googleTools.js';
 import { WEB_HANDLERS } from './webTools.js';
-import { UI_HANDLERS } from './uiTools.js';
+import { UI_HANDLERS, prepareWebsite } from './uiTools.js';
+import { BRIEFING_HANDLERS } from './briefingTools.js';
 import { trackApplication, listApplications, summarize } from './applicationService.js';
 import { listUpcoming } from './agenda.js';
 import { listRecentActions } from './actionLog.js';
 import { DEFAULT_TZ, modelTimeToUtcIso } from './time.js';
+import { deleteStep } from './undo.js';
 
 // Shared by text chat (routes/chat.js) and voice (routes/voice.js): one dispatcher,
 // one set of behaviours, whichever way the request arrived.
@@ -49,7 +51,7 @@ export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {
       if (error) throw error;
       // Fire-and-forget embedding write
       setImmediate(() => embedAndStore(userId, 'notes', data.id, content));
-      return { ok: true, id: data.id, title: data.title, message: 'Note saved.' };
+      return { ok: true, id: data.id, title: data.title, message: 'Note saved.', undo: [deleteStep('notes', data.id)] };
     }
 
     if (name === 'create_task') {
@@ -60,7 +62,7 @@ export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {
         .select('id, title, due_date, priority, status')
         .single();
       if (error) throw error;
-      return { ok: true, id: data.id, title: data.title, message: 'Task created.' };
+      return { ok: true, id: data.id, title: data.title, message: 'Task created.', undo: [deleteStep('tasks', data.id)] };
     }
 
     if (name === 'search_memory') {
@@ -144,8 +146,10 @@ export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {
         ok: true,
         count: rows.length,
         actions: rows.map((r) => ({
+          id: r.id,
           tool: r.tool,
           status: r.status,
+          undoable: r.undoable,
           summary: r.summary,
           args: r.args,
           via: r.source,
@@ -154,7 +158,7 @@ export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {
       };
     }
 
-    const handler = MANAGE_HANDLERS[name] ?? GOOGLE_HANDLERS[name] ?? WEB_HANDLERS[name] ?? UI_HANDLERS[name];
+    const handler = MANAGE_HANDLERS[name] ?? GOOGLE_HANDLERS[name] ?? WEB_HANDLERS[name] ?? UI_HANDLERS[name] ?? BRIEFING_HANDLERS[name];
     if (handler) return await handler(userId, args ?? {}, { tz });
 
     return { ok: false, message: `Unknown tool: ${name}` };
@@ -171,5 +175,6 @@ export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {
  */
 export function prepareAction(name, args, userId) {
   if (GOOGLE_HANDLERS[name]) return prepareGoogleAction(name, args, userId);
+  if (name === 'open_website') return prepareWebsite(args);
   return prepareManaged(name, args, userId);
 }

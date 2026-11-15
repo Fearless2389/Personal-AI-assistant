@@ -29,6 +29,9 @@ export const RISK = Object.freeze({
   web_search: 'safe',
   read_webpage: 'safe', // read-only: public pages, private addresses refused (webFetch.js)
   open_page: 'safe', // only switches the app's page
+  get_briefing: 'safe',
+  undo_action: 'safe', // reverses Nexus's own change to Rama's data; the plan is checked (undo.js)
+  open_website: 'safe', // a new tab in your browser; asks first right after email/web content (effectiveRisk)
   send_email: 'confirm', // always: it leaves your account and can't be unsent
   manage_calendar_event: Object.freeze({ list: 'safe', '*': 'confirm' }), // your real calendar
   resolve_pending_action: 'safe', // the gate itself decides; see actionGate.resolvePending
@@ -47,6 +50,21 @@ export function riskOf(name, args = {}) {
   return level[args?.action] ?? level['*'] ?? 'confirm';
 }
 
+// Third-party text reaches the model through these tools (emails, web pages). For a
+// few minutes after one runs, tools that a planted instruction could abuse without
+// any other permission (opening a link) wait for your OK, so an email or page saying
+// "open this site" can't do it on its own.
+export const UNTRUSTED_SOURCES = new Set(['search_email', 'read_email', 'web_search', 'read_webpage']);
+const ASK_AFTER_UNTRUSTED = new Set(['open_website']);
+export const UNTRUSTED_WINDOW_MS = 3 * 60_000;
+
+/** riskOf, raised to 'confirm' for link-opening tools shortly after untrusted content was read. */
+export function effectiveRisk(name, args = {}, { untrustedAt = null, now = Date.now() } = {}) {
+  const risk = riskOf(name, args);
+  const recent = untrustedAt != null && now - untrustedAt <= UNTRUSTED_WINDOW_MS;
+  return risk === 'safe' && recent && ASK_AFTER_UNTRUSTED.has(name) ? 'confirm' : risk;
+}
+
 // Lookups run without a log row — the action log is "what Nexus did", and a lookup
 // changes nothing. Whole tools, plus the list/read actions of manage_* tools.
 const READ_ONLY = new Set([
@@ -58,7 +76,8 @@ const READ_ONLY = new Set([
   'read_email',
   'web_search',
   'read_webpage',
-  'open_page'
+  'open_page',
+  'get_briefing'
 ]);
 const READ_ACTIONS = new Set(['list', 'read']);
 export const isReadOnly = (name, args = {}) =>
@@ -66,6 +85,29 @@ export const isReadOnly = (name, args = {}) =>
 
 /** manage_task → 'task'. */
 export const entityOf = (name) => (name.startsWith('manage_') ? name.slice('manage_'.length) : null);
+
+/** An action can be undone for this long after it ran (an old snapshot could overwrite newer edits). */
+export const UNDO_WINDOW_MS = 24 * 60 * 60_000;
+
+const NOT_UNDOABLE = {
+  create_calendar_event: 'Calendar changes', manage_calendar_event: 'Calendar changes',
+  send_email: 'Sent emails', draft_email: 'Gmail drafts', open_website: 'Opened websites', open_page: 'Page switches'
+};
+
+/** May this logged action be undone now? → null, or the reason it can't (said to Rama). */
+export function undoBlockedReason(row, now) {
+  if (!row) return 'There is nothing Nexus did recently that can be undone.';
+  if (row.status === 'undone') return 'That was already undone.';
+  if (row.status !== 'executed') return `That action was ${row.status.replace('_', ' ')}, so there is nothing to undo.`;
+  if (row.undo_unavailable) return 'Undo needs a one-time database update (migration 007) that has not been run yet.';
+  if (!Array.isArray(row.undo) || row.undo.length === 0) {
+    const what = NOT_UNDOABLE[row.tool];
+    return what ? `${what} can't be undone from Nexus.` : `"${row.summary || row.tool}" can't be undone.`;
+  }
+  const at = Date.parse(row.created_at);
+  if (!Number.isFinite(at) || now - at > UNDO_WINDOW_MS) return 'That was more than a day ago, so undoing it is not safe.';
+  return null;
+}
 
 /** A pending action can be approved for this long after it was proposed. */
 export const CONFIRM_TTL_MS = 2 * 60_000;
@@ -122,6 +164,8 @@ export function describeAction(name, args = {}, formatWhen = (iso) => iso) {
       ].filter(Boolean);
       return `Change ${label}: ${changes.join(', ') || 'update details'}`;
     }
+    case 'open_website':
+      return `Open ${args.site ?? args.url ?? 'a website'} in a new tab`;
     default:
       {
         // manage_* deletes: target_label is pinned by the gate after it resolves the item.

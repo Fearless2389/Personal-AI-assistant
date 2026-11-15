@@ -8,8 +8,23 @@ import {
   isNegative,
   isFresh,
   describeAction,
+  effectiveRisk,
+  UNTRUSTED_WINDOW_MS,
   CONFIRM_TTL_MS
 } from './actionPolicy.js';
+
+test('opening a website asks first only right after email or web content was read', () => {
+  const now = 1_000_000_000;
+  assert.equal(effectiveRisk('open_website', {}, { untrustedAt: null, now }), 'safe');
+  assert.equal(effectiveRisk('open_website', {}, { untrustedAt: now - 30_000, now }), 'confirm');
+  assert.equal(effectiveRisk('open_website', {}, { untrustedAt: now - UNTRUSTED_WINDOW_MS, now }), 'confirm');
+  assert.equal(effectiveRisk('open_website', {}, { untrustedAt: now - UNTRUSTED_WINDOW_MS - 1, now }), 'safe');
+  // Other safe tools stay safe; gated tools stay gated.
+  assert.equal(effectiveRisk('create_task', {}, { untrustedAt: now, now }), 'safe');
+  assert.equal(effectiveRisk('open_page', {}, { untrustedAt: now, now }), 'safe');
+  assert.equal(effectiveRisk('send_email', {}, { untrustedAt: null, now }), 'confirm');
+  assert.equal(describeAction('open_website', { url: 'https://youtube.com/', site: 'youtube.com' }), 'Open youtube.com in a new tab');
+});
 
 test('outward actions need confirmation, in-app writes do not', () => {
   assert.equal(riskOf('create_calendar_event'), 'confirm');

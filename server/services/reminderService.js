@@ -44,6 +44,8 @@ export async function scheduleReminder(userId, { message, scheduled_at, linked_t
     ok: true,
     id: data.id,
     scheduled_at: data.scheduled_at,
+    // Undo = cancel it, only while it hasn't been sent.
+    undo: [{ op: 'update', table: 'sms_jobs', id: data.id, set: { status: 'cancelled' }, match: { status: 'pending' } }],
     delivery: isSmsConfigured()
       ? "Reminder scheduled — you'll get a text at that time."
       : 'Reminder saved. It will send once SMS is configured on the server.'

@@ -2,6 +2,7 @@
 // REST route and the chat tools (track_application / list_applications) share
 // one implementation of stage rules, history and company matching.
 import { supabaseAdmin } from './supabase.js';
+import { snapshotRow, restoreStep, deleteStep } from './undo.js';
 
 export const STAGES = ['wishlist', 'applied', 'oa', 'interview', 'offer', 'rejected', 'withdrawn'];
 export const ACTIVE_STAGES = ['wishlist', 'applied', 'oa', 'interview', 'offer'];
@@ -194,11 +195,13 @@ export async function trackApplication(userId, args = {}) {
   }
 
   if (matches.length === 1) {
+    const before = await snapshotRow('applications', matches[0].id, userId);
     const app = await updateApplication(userId, matches[0].id, args);
-    return { ok: true, action: 'updated', application: summarize(app) };
+    const changed = Object.keys(before).filter((k) => !['id', 'user_id', 'created_at'].includes(k));
+    return { ok: true, action: 'updated', application: summarize(app), undo: [restoreStep('applications', before, changed)] };
   }
   const app = await createApplication(userId, args);
-  return { ok: true, action: 'created', application: summarize(app) };
+  return { ok: true, action: 'created', application: summarize(app), undo: [deleteStep('applications', app.id)] };
 }
 
 /** Compact shape for tool results and prompts. */

@@ -5,11 +5,32 @@
 // own action: a yes is checked against what you said (mic transcript) or typed,
 // which it does not write.
 import { handleToolCall, normalizeDates, prepareAction } from './tools.js';
-import { riskOf, isReadOnly, isAffirmative, isNegative, isFresh, describeAction } from './actionPolicy.js';
+import {
+  effectiveRisk,
+  UNTRUSTED_SOURCES,
+  isReadOnly,
+  isAffirmative,
+  isNegative,
+  isFresh,
+  describeAction,
+  undoBlockedReason
+} from './actionPolicy.js';
+import { applyUndo } from './undo.js';
 import * as actionLog from './actionLog.js';
 import { DEFAULT_TZ, formatInTz } from './time.js';
 
 const whenIn = (tz) => (iso) => formatInTz(tz, new Date(iso));
+
+// userId → when an email or web page last reached the model (see effectiveRisk).
+// In memory on purpose: it only needs to cover the next few minutes.
+const untrustedReadAt = new Map();
+
+/** A handler's result → what the model sees, and the undo plan the log keeps. */
+function splitUndo(result) {
+  if (!result || typeof result !== 'object' || !('undo' in result)) return { visible: result, undo: null };
+  const { undo, ...visible } = result;
+  return { visible, undo: Array.isArray(undo) && undo.length ? undo : null };
+}
 
 /** Log without letting a logging failure break the action itself. */
 async function record(userId, row) {
@@ -36,6 +57,7 @@ export function dispatchAssistantTool(userId, name, args, { tz = DEFAULT_TZ, sou
       tz
     });
   }
+  if (name === 'undo_action') return undoAction(userId, { id: args?.action_id || null });
   return runGuarded(userId, name, args, { tz, source, utterance, sessionId });
 }
 
@@ -45,7 +67,7 @@ export function dispatchAssistantTool(userId, name, args, { tz = DEFAULT_TZ, sou
  */
 export async function runGuarded(userId, name, rawArgs, { tz = DEFAULT_TZ, source, utterance, sessionId } = {}) {
   let args = normalizeDates(rawArgs, tz);
-  const risk = riskOf(name, args);
+  const risk = effectiveRisk(name, args, { untrustedAt: untrustedReadAt.get(userId) ?? null });
   const base = { source, tool: name, risk, utterance, sessionId };
 
   if (risk === 'never') {
@@ -79,15 +101,19 @@ export async function runGuarded(userId, name, rawArgs, { tz = DEFAULT_TZ, sourc
     };
   }
 
-  const result = await handleToolCall(name, args, userId, { tz });
+  const { visible: result, undo } = splitUndo(await handleToolCall(name, args, userId, { tz }));
+  if (UNTRUSTED_SOURCES.has(name) && result?.ok !== false) untrustedReadAt.set(userId, Date.now());
   if (!isReadOnly(name, args)) {
-    await record(userId, {
+    const failed = result?.ok === false;
+    const row = await record(userId, {
       ...base,
       args,
-      status: result?.ok === false ? 'failed' : 'executed',
+      status: failed ? 'failed' : 'executed',
       summary: result?.message ?? null,
-      result
+      result,
+      undo: failed ? null : undo
     });
+    if (row?.undo_saved) return { ...result, action_id: row.id, undoable: true };
   }
   return result;
 }
@@ -147,12 +173,39 @@ export async function resolvePending(userId, { id, decision, via, utterance, tz 
   });
   if (!won) return out('already_decided', { message: 'Already handled.' });
 
-  const result = await handleToolCall(row.tool, row.args, userId, { tz });
+  const { visible: result, undo } = splitUndo(await handleToolCall(row.tool, row.args, userId, { tz }));
   const status = result?.ok === false ? 'failed' : 'executed';
   await actionLog.transition(userId, row.id, 'confirmed', status, { result }).catch((err) => {
     console.error('[actions] could not record outcome:', err.message);
   });
-  return out(status, { ok: status === 'executed', result });
+  let undoable = false;
+  if (status === 'executed' && undo) {
+    undoable = await actionLog.saveUndo(userId, row.id, undo).then(
+      () => true,
+      (err) => (console.error('[actions] could not store undo:', err.message), false)
+    );
+  }
+  return out(status, { ok: status === 'executed', result, undoable });
+}
+
+/**
+ * Reverse an action Nexus took on Rama's own data ("undo that", the Undo button).
+ * id omitted: the newest action that ran. Runs once: the row moves executed → undone
+ * before the plan runs, and back if the plan fails.
+ */
+export async function undoAction(userId, { id } = {}) {
+  const row = id ? await actionLog.getAction(userId, id, { withUndo: true }) : await actionLog.latestExecuted(userId);
+  const blocked = undoBlockedReason(row, Date.now());
+  const label = row?.summary || row?.result?.message || row?.tool;
+  if (blocked) return { ok: false, status: 'not_undoable', id: row?.id ?? null, tool: row?.tool ?? null, error: blocked };
+  if (!(await actionLog.markUndone(userId, row.id))) return { ok: false, id: row.id, error: 'That was already undone.' };
+  try {
+    await applyUndo(userId, row.undo);
+  } catch (err) {
+    await actionLog.unmarkUndone(userId, row.id).catch(() => {});
+    return { ok: false, id: row.id, tool: row.tool, error: `Couldn't undo "${label}": ${err.message}` };
+  }
+  return { ok: true, id: row.id, tool: row.tool, status: 'undone', summary: label, message: `Undone: ${label}` };
 }
 
 export { cancelAllPending, listRecentActions } from './actionLog.js';
