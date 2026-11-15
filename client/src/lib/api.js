@@ -159,6 +159,57 @@ export const calendarApi = {
 };
 
 /**
+ * Read a server-sent-event stream of `data: <json>` lines. onEvent(obj) may return
+ * true to stop early. Resolves when the stream ends (or onEvent stops it).
+ */
+async function readSse(res, onEvent) {
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) return;
+    buffer += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buffer.indexOf('\n\n')) !== -1) {
+      const line = buffer.slice(0, idx).trim();
+      buffer = buffer.slice(idx + 2);
+      if (!line.startsWith('data:')) continue; // comments / keep-alives
+      const payload = line.slice(5).trim();
+      if (!payload) continue;
+      let obj;
+      try {
+        obj = JSON.parse(payload);
+      } catch (err) {
+        console.warn('[stream] bad chunk:', payload, err);
+        continue;
+      }
+      if (onEvent(obj)) {
+        await reader.cancel().catch(() => {});
+        return;
+      }
+    }
+  }
+}
+
+/**
+ * Global push-to-talk presses for this tab (GET /api/hotkey/events), read with the
+ * normal Authorization header. Resolves when the stream closes; throws with
+ * err.status (503 = hotkey not configured on the server).
+ */
+export async function streamHotkeyEvents({ onEvent, signal }) {
+  const res = await fetch(`${BASE}/api/hotkey/events`, {
+    headers: { ...(await authHeaders()), Accept: 'text/event-stream' },
+    signal
+  });
+  if (!res.ok || !res.body) throw Object.assign(new Error(`hotkey stream ${res.status}`), { status: res.status });
+  await readSse(res, (obj) => {
+    onEvent(obj);
+    return false;
+  });
+}
+
+/**
  * Stream a chat response. `onChunk` is called with each parsed SSE event:
  *   { type: 'text', delta }
  *   { type: 'tool_result', name, args, result }
@@ -184,31 +235,10 @@ export function streamChat({ message, sessionId, onChunk, signal }) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err?.error || `chat stream failed: ${res.status}`);
     }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let idx;
-      while ((idx = buffer.indexOf('\n\n')) !== -1) {
-        const raw = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + 2);
-        const line = raw.trim();
-        if (!line.startsWith('data:')) continue;
-        const payload = line.slice(5).trim();
-        if (!payload) continue;
-        try {
-          const obj = JSON.parse(payload);
-          onChunk?.(obj);
-          if (obj.type === 'done') return;
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.warn('[stream] bad chunk:', payload, err);
-        }
-      }
-    }
+    await readSse(res, (obj) => {
+      onChunk?.(obj);
+      return obj.type === 'done';
+    });
   })();
 
   return { promise, abort: () => controller.abort() };

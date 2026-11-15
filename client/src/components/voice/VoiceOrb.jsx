@@ -6,6 +6,7 @@ import { Mic, Loader2, AlertCircle } from 'lucide-react';
 import { useVoiceStore } from '../../store/useVoiceStore.js';
 import { pressStart, pressEnd, warmUp, shutdown, stopAll } from '../../lib/voice/engine.js';
 import { hasWaiting } from '../../lib/confirmations.js';
+import { startHotkeyBridge } from '../../lib/voice/hotkeyBridge.js';
 import { cn } from '../../lib/utils.js';
 import { VoicePanel } from './VoicePanel.jsx';
 
@@ -29,7 +30,8 @@ export function VoiceOrb() {
   const wrapRef = useRef(null);
   const hold = useRef({ timer: null, held: false, suppressClick: false });
 
-  // In-app push-to-talk shortcut. (The tray helper will make it global in Phase 4.)
+  // In-app push-to-talk shortcut. With the tray helper running, Windows hands the key
+  // to the helper instead and the press arrives through the hotkey bridge.
   useEffect(() => {
     let keyHeld = false;
     const release = () => {
@@ -68,6 +70,9 @@ export function VoiceOrb() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // Global hotkey from the tray helper (works with Nexus in a background tab).
+  useEffect(() => startHotkeyBridge(), []);
 
   useEffect(() => () => shutdown(), []); // leaving the app (sign-out) ends the session
 
