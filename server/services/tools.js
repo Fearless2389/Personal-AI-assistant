@@ -4,6 +4,7 @@ import * as calendarService from './calendarService.js';
 import { scheduleReminder } from './reminderService.js';
 import { MANAGE_HANDLERS, prepareAction as prepareManaged } from './manageTools.js';
 import { GOOGLE_HANDLERS, prepareGoogleAction, googleErrorResult } from './googleTools.js';
+import { WEB_HANDLERS } from './webTools.js';
 import { trackApplication, listApplications, summarize } from './applicationService.js';
 import { listUpcoming } from './agenda.js';
 import { listRecentActions } from './actionLog.js';
@@ -152,7 +153,7 @@ export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {
       };
     }
 
-    const handler = MANAGE_HANDLERS[name] ?? GOOGLE_HANDLERS[name];
+    const handler = MANAGE_HANDLERS[name] ?? GOOGLE_HANDLERS[name] ?? WEB_HANDLERS[name];
     if (handler) return await handler(userId, args ?? {}, { tz });
 
     return { ok: false, message: `Unknown tool: ${name}` };

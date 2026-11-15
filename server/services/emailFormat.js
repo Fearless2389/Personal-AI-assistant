@@ -1,5 +1,6 @@
 // Pure email helpers for gmailService.js: building outgoing messages safely and
 // reading incoming ones as plain text. No I/O — tested in emailFormat.test.js.
+import { htmlToText } from './htmlText.js';
 
 const EMAIL = /^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[^\s@<>(),;:"]+$/;
 
@@ -60,22 +61,6 @@ export const headerOf = (headers, name) =>
   (headers ?? []).find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? '';
 
 const decodePart = (data) => (data ? Buffer.from(data, 'base64url').toString('utf8') : '');
-
-export function htmlToText(html) {
-  return String(html ?? '')
-    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
-    .replace(/<br\s*\/?>|<\/(p|div|li|tr|h\d)>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n\s*\n\s*\n+/g, '\n\n')
-    .trim();
-}
 
 /** The readable text of a Gmail message payload: text/plain first, else stripped HTML. */
 export function extractBody(payload) {

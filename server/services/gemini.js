@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { MANAGE_DECLARATIONS } from './manageDeclarations.js';
 import { GOOGLE_DECLARATIONS } from './googleDeclarations.js';
+import { WEB_DECLARATIONS } from './webTools.js';
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) console.warn('[gemini] Missing GEMINI_API_KEY in environment.');
@@ -144,7 +145,8 @@ export const tools = [
         }
       },
       ...MANAGE_DECLARATIONS,
-      ...GOOGLE_DECLARATIONS
+      ...GOOGLE_DECLARATIONS,
+      ...WEB_DECLARATIONS
     ]
   }
 ];

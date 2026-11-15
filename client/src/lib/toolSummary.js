@@ -16,7 +16,8 @@ import {
   Target,
   Mail,
   Send,
-  FilePen
+  FilePen,
+  Globe
 } from 'lucide-react';
 import { stageMeta } from './applications.js';
 import { actionStatusMeta } from './actionStatus.js';
@@ -123,6 +124,14 @@ export function summarizeTool(name, args = {}, result = {}) {
       return { icon: FilePen, ok: true, text: result.message ?? 'Draft saved' };
     case 'send_email':
       return { icon: Send, ok: true, text: result.message ?? 'Email sent' };
+    case 'web_search':
+      return {
+        icon: Globe,
+        ok: true,
+        text: `Searched the web${result.provider === 'wikipedia' ? ' (Wikipedia)' : ''}: "${args.query ?? ''}" · ${result.count ?? 0} results`
+      };
+    case 'read_webpage':
+      return { icon: Globe, ok: true, text: `Read: ${result.title || args.url}` };
     case 'list_recent_actions':
       return { icon: History, ok: true, text: `Checked recent actions: ${result.count ?? 0}` };
     default:
