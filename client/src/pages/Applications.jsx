@@ -16,6 +16,7 @@ import { Modal } from '../components/ui/Modal.jsx';
 import { ApplicationCard, ApplicationCardBody, Monogram } from '../components/applications/ApplicationCard.jsx';
 import { ApplicationDrawer } from '../components/applications/ApplicationDrawer.jsx';
 import { ApplicationFields } from '../components/applications/ApplicationFields.jsx';
+import { TryCommands } from '../components/shared/TryCommands.jsx';
 
 const CHANNEL_FILTERS = [
   { id: 'all', label: 'All' },
@@ -189,6 +190,7 @@ export default function Applications() {
 
   return (
     <PageWrapper className="max-w-[1400px]">
+      <TryCommands page="applications" className="mb-4" />
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
         <div

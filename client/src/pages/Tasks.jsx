@@ -16,6 +16,7 @@ import { LoadingSpinner } from '../components/shared/LoadingSpinner.jsx';
 import { PageWrapper } from '../components/layout/PageWrapper.jsx';
 import { formatRelative, priorityColor } from '../lib/utils.js';
 import { useRefreshKey } from '../store/useRefreshStore.js';
+import { TryCommands } from '../components/shared/TryCommands.jsx';
 
 const COLUMN_LABELS = { todo: 'Todo', in_progress: 'In progress', done: 'Done' };
 
@@ -119,6 +120,7 @@ export default function Tasks() {
 
   return (
     <PageWrapper>
+      <TryCommands page="tasks" className="mb-4" />
       <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
         <div className="flex items-center gap-2 flex-wrap">
           {FILTERS.map((f) => (

@@ -11,6 +11,7 @@ import { LoadingSpinner } from '../components/shared/LoadingSpinner.jsx';
 import { PageWrapper } from '../components/layout/PageWrapper.jsx';
 import { formatRelative } from '../lib/utils.js';
 import { useRefreshKey } from '../store/useRefreshStore.js';
+import { TryCommands } from '../components/shared/TryCommands.jsx';
 
 export default function Notes() {
   const { notes, activeNoteId, semantic, loading, setNotes, setActive, upsert, remove, setLoading } = useNotesStore();
@@ -77,6 +78,7 @@ export default function Notes() {
 
   return (
     <PageWrapper>
+      <TryCommands page="notes" className="mb-4" />
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 lg:gap-6">
         {/* List */}
         <section className="space-y-3 min-w-0">

@@ -18,6 +18,7 @@ import { Timeline } from '../components/today/Timeline.jsx';
 import { PipelineCard } from '../components/today/PipelineCard.jsx';
 import { NoticedCard } from '../components/today/NoticedCard.jsx';
 import { HabitsCard } from '../components/today/HabitsCard.jsx';
+import { TryCommands } from '../components/shared/TryCommands.jsx';
 
 // Nudge kinds Today shows in "Nexus noticed"; the rest attach to timeline rows
 // (deadline/overdue) or duplicate other cards (habits, tomorrow, overdue-tasks).
@@ -155,6 +156,7 @@ export default function Today() {
             {refreshing ? <LoadingSpinner /> : <RefreshCw size={16} />}
           </button>
         </motion.header>
+        <TryCommands page="today" />
 
         {/* Capture hero — the page's one primary action */}
         <motion.button

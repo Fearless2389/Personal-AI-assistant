@@ -13,6 +13,7 @@ import { EmptyState } from '../components/shared/EmptyState.jsx';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner.jsx';
 import { PageWrapper } from '../components/layout/PageWrapper.jsx';
 import { useRefreshKey } from '../store/useRefreshStore.js';
+import { TryCommands } from '../components/shared/TryCommands.jsx';
 
 function StatTile({ label, value, sub }) {
   return (
@@ -164,6 +165,8 @@ export default function Habits() {
           <Plus size={15} /> New habit
         </Button>
       </div>
+
+      <TryCommands page="habits" className="-mt-2 mb-6" />
 
       {error && (
         <div className="mb-4">

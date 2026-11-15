@@ -14,6 +14,7 @@ import { LoadingSpinner } from '../components/shared/LoadingSpinner.jsx';
 import { PageWrapper } from '../components/layout/PageWrapper.jsx';
 import { formatDate } from '../lib/utils.js';
 import { useRefreshKey } from '../store/useRefreshStore.js';
+import { TryCommands } from '../components/shared/TryCommands.jsx';
 
 const CATEGORY_INTENT = { academic: 'info', health: 'success', career: 'primary', personal: 'neutral' };
 
@@ -211,6 +212,8 @@ export default function Goals() {
           <Plus size={15} /> New goal
         </Button>
       </div>
+
+      <TryCommands page="goals" className="-mt-1 mb-5" />
 
       {error && (
         <div className="mb-4">

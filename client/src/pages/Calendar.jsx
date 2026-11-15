@@ -10,6 +10,7 @@ import { ConnectGoogleCard } from '../components/calendar/ConnectGoogleCard.jsx'
 import { AgendaList } from '../components/calendar/AgendaList.jsx';
 import { CalendarErrorBanner } from '../components/calendar/CalendarErrorBanner.jsx';
 import { useCalendar } from '../hooks/useCalendar.js';
+import { TryCommands } from '../components/shared/TryCommands.jsx';
 
 const ERROR_LABELS = {
   missing_state: 'Sign-in state expired. Try again.',
@@ -52,6 +53,8 @@ export default function Calendar() {
           </Button>
         )}
       </div>
+
+      <TryCommands page="calendar" className="-mt-1 mb-5" />
 
       {flash && (
         <div className="mb-4">
