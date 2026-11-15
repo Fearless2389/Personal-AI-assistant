@@ -4,6 +4,7 @@
 import { useConfirmStore } from '../store/useConfirmStore.js';
 import { useRefreshStore, keysForTool } from '../store/useRefreshStore.js';
 import { actionsApi } from './api.js';
+import { navigateTo } from './navigation.js';
 
 const set = useConfirmStore.setState;
 const get = useConfirmStore.getState;
@@ -43,10 +44,12 @@ export function applyResolution(res) {
 
 /**
  * Every tool result from voice, chat or ⌘K goes through here: parked actions are
- * tracked, resolutions applied, and anything that changed data refreshes its pages.
+ * tracked, resolutions applied, open_page navigates, and anything that changed data
+ * refreshes its pages.
  */
 export function applyToolResult(name, result) {
   if (name === 'resolve_pending_action') return applyResolution(result);
+  if (result?.ok && result.navigate) navigateTo(result.navigate); // open_page
   if (trackParked(result)) return;
   if (result?.ok !== false && !result?.needs_choice) useRefreshStore.getState().bump(...keysForTool(name));
 }

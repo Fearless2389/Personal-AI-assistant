@@ -28,6 +28,7 @@ export const RISK = Object.freeze({
   draft_email: 'safe', // lands in Drafts; nothing leaves the account
   web_search: 'safe',
   read_webpage: 'safe', // read-only: public pages, private addresses refused (webFetch.js)
+  open_page: 'safe', // only switches the app's page
   send_email: 'confirm', // always: it leaves your account and can't be unsent
   manage_calendar_event: Object.freeze({ list: 'safe', '*': 'confirm' }), // your real calendar
   resolve_pending_action: 'safe', // the gate itself decides; see actionGate.resolvePending
@@ -56,7 +57,8 @@ const READ_ONLY = new Set([
   'search_email',
   'read_email',
   'web_search',
-  'read_webpage'
+  'read_webpage',
+  'open_page'
 ]);
 const READ_ACTIONS = new Set(['list', 'read']);
 export const isReadOnly = (name, args = {}) =>

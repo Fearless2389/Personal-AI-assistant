@@ -17,7 +17,8 @@ import {
   Mail,
   Send,
   FilePen,
-  Globe
+  Globe,
+  Compass
 } from 'lucide-react';
 import { stageMeta } from './applications.js';
 import { actionStatusMeta } from './actionStatus.js';
@@ -132,6 +133,8 @@ export function summarizeTool(name, args = {}, result = {}) {
       };
     case 'read_webpage':
       return { icon: Globe, ok: true, text: `Read: ${result.title || args.url}` };
+    case 'open_page':
+      return { icon: Compass, ok: true, text: `Opened ${result.page ?? args.page}` };
     case 'list_recent_actions':
       return { icon: History, ok: true, text: `Checked recent actions: ${result.count ?? 0}` };
     default:

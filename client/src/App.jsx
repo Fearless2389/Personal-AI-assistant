@@ -20,6 +20,7 @@ import Focus from './pages/Focus.jsx';
 import Analytics from './pages/Analytics.jsx';
 import WeeklyReview from './pages/WeeklyReview.jsx';
 import Settings from './pages/Settings.jsx';
+import { registerNavigator } from './lib/navigation.js';
 
 function ProtectedLayout() {
   const user = useUser();
@@ -81,6 +82,9 @@ const router = createBrowserRouter([
   },
   { path: '*', element: <Navigate to="/" replace /> }
 ]);
+
+// Lets the voice engine and chat tool results switch pages (open_page tool).
+registerNavigator((path) => router.navigate(path));
 
 export default function App() {
   useAuthSync();
