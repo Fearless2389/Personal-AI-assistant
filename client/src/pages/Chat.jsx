@@ -212,7 +212,15 @@ export default function Chat() {
                     >
                       <Icon size={14} className={`mt-0.5 shrink-0 ${s.ok ? 'text-nexus-primary' : 'text-danger'}`} />
                       <div className="min-w-0">
-                        <p className="text-xs text-text-primary leading-snug">{s.text}</p>
+                        <p className="text-xs text-text-primary leading-snug">
+                          {s.href ? (
+                            <a href={s.href} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                              {s.text}
+                            </a>
+                          ) : (
+                            s.text
+                          )}
+                        </p>
                         <p className="text-[10px] text-text-muted mt-0.5">
                           {formatRelative(new Date(r.ts).toISOString())}
                         </p>

@@ -8,7 +8,8 @@ const STATUS = {
   failed: { label: 'Failed', intent: 'danger' },
   cancelled: { label: 'Cancelled', intent: 'neutral' },
   expired: { label: 'Expired', intent: 'neutral' },
-  blocked: { label: 'Blocked', intent: 'danger' }
+  blocked: { label: 'Blocked', intent: 'danger' },
+  undone: { label: 'Undone', intent: 'neutral' }
 };
 
 export const actionStatusMeta = (status) => STATUS[status] ?? { label: status, intent: 'neutral' };

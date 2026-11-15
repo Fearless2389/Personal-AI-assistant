@@ -11,6 +11,7 @@ import {
   ListChecks,
   AlertCircle,
   History,
+  Undo2,
   ShieldCheck,
   HelpCircle,
   Target,
@@ -18,7 +19,9 @@ import {
   Send,
   FilePen,
   Globe,
-  Compass
+  Compass,
+  ExternalLink,
+  Sunrise
 } from 'lucide-react';
 import { stageMeta } from './applications.js';
 import { actionStatusMeta } from './actionStatus.js';
@@ -60,7 +63,7 @@ export function chipTarget(action) {
   return SECTION[sectionOf(action.name)]?.to ?? null;
 }
 
-/** → { icon, text, ok } */
+/** → { icon, text, ok, href? } (href: an external link the chip opens) */
 export function summarizeTool(name, args = {}, result = {}) {
   if (result?.ok === false) {
     return { icon: AlertCircle, ok: false, text: result.message || result.error || `${name} failed` };
@@ -133,8 +136,14 @@ export function summarizeTool(name, args = {}, result = {}) {
       };
     case 'read_webpage':
       return { icon: Globe, ok: true, text: `Read: ${result.title || args.url}` };
+    case 'get_briefing':
+      return { icon: Sunrise, ok: true, text: result.briefing?.headline ? `Briefing: ${result.briefing.headline}` : 'Read your briefing' };
+    case 'open_website':
+      return { icon: ExternalLink, ok: true, text: `Opened ${result.site ?? args.url}`, href: result.open };
     case 'open_page':
       return { icon: Compass, ok: true, text: `Opened ${result.page ?? args.page}` };
+    case 'undo_action':
+      return { icon: Undo2, ok: true, text: result.message ?? 'Undone' };
     case 'list_recent_actions':
       return { icon: History, ok: true, text: `Checked recent actions: ${result.count ?? 0}` };
     default:

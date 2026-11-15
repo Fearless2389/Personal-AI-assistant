@@ -96,7 +96,8 @@ export const actionsApi = {
   list: (limit = 20) => request(`/api/actions?limit=${limit}`),
   resolve: (id, decision, utterance) =>
     request(`/api/actions/${id}/resolve`, { method: 'POST', body: { decision, utterance } }),
-  cancelPending: () => request('/api/actions/cancel-pending', { method: 'POST' })
+  cancelPending: () => request('/api/actions/cancel-pending', { method: 'POST' }),
+  undo: (id) => request(`/api/actions/${id}/undo`, { method: 'POST' })
 };
 
 export const habitsApi = {

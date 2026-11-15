@@ -4,7 +4,7 @@
 import { useConfirmStore } from '../store/useConfirmStore.js';
 import { useRefreshStore, keysForTool } from '../store/useRefreshStore.js';
 import { actionsApi } from './api.js';
-import { navigateTo } from './navigation.js';
+import { navigateTo, openExternal } from './navigation.js';
 
 const set = useConfirmStore.setState;
 const get = useConfirmStore.getState;
@@ -38,18 +38,22 @@ export function applyResolution(res) {
   if (!res?.id) return;
   const error = res.ok === false ? (res.error ?? res.result?.error ?? res.result?.message ?? null) : null;
   // A non-yes leaves it waiting: keep the card's buttons live.
-  patch(res.id, { status: res.status === 'not_found' ? 'expired' : res.status, error });
+  const link = res.status === 'executed' ? (res.result?.open ?? null) : null; // a confirmed open_website
+  patch(res.id, { status: res.status === 'not_found' ? 'expired' : res.status, error, ...(link && { link }) });
+  if (link) openExternal(link);
   if (res.status === 'executed') useRefreshStore.getState().bump(...keysForTool(res.tool));
 }
 
 /**
  * Every tool result from voice, chat or ⌘K goes through here: parked actions are
- * tracked, resolutions applied, open_page navigates, and anything that changed data
- * refreshes its pages.
+ * tracked, resolutions applied, open_page navigates, open_website opens a tab, and
+ * anything that changed data refreshes its pages.
  */
 export function applyToolResult(name, result) {
   if (name === 'resolve_pending_action') return applyResolution(result);
+  if (name === 'undo_action') return refreshAfterUndo(result);
   if (result?.ok && result.navigate) navigateTo(result.navigate); // open_page
+  if (result?.ok && result.open) openExternal(result.open); // open_website
   if (trackParked(result)) return;
   if (result?.ok !== false && !result?.needs_choice) useRefreshStore.getState().bump(...keysForTool(name));
 }
@@ -82,6 +86,21 @@ export async function resolveBySpeech(id, utterance) {
     console.warn('[confirm] spoken answer not applied:', err.message);
     return null;
   }
+}
+
+/** An undo ran (spoken, typed or tapped): refresh the pages showing what it changed. */
+function refreshAfterUndo(result) {
+  if (result?.ok && result.tool) useRefreshStore.getState().bump(...keysForTool(result.tool));
+}
+
+/**
+ * Undo button (action chips, Settings): reverse one logged action. Returns the server's
+ * outcome ({ ok, status: 'undone' } or { ok: false, error }); throws only on network failure.
+ */
+export async function undoByTap(actionId) {
+  const { result } = await actionsApi.undo(actionId);
+  refreshAfterUndo(result);
+  return result;
 }
 
 /** Kill switch: cancel everything still waiting, on the server and on screen. */

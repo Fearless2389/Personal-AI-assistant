@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { RefreshCw, Sparkles } from 'lucide-react';
+import { RefreshCw, Sparkles, Volume2 } from 'lucide-react';
 import { dashboardApi, agendaApi, nudgesApi, applicationsApi, habitsApi } from '../lib/api.js';
 import { useRefreshKey } from '../store/useRefreshStore.js';
 import { useCommandBar } from '../store/useCommandBar.js';
@@ -19,6 +19,7 @@ import { PipelineCard } from '../components/today/PipelineCard.jsx';
 import { NoticedCard } from '../components/today/NoticedCard.jsx';
 import { HabitsCard } from '../components/today/HabitsCard.jsx';
 import { TryCommands } from '../components/shared/TryCommands.jsx';
+import { askAloud } from '../lib/voice/engine.js';
 
 // Nudge kinds Today shows in "Nexus noticed"; the rest attach to timeline rows
 // (deadline/overdue) or duplicate other cards (habits, tomorrow, overdue-tasks).
@@ -146,15 +147,31 @@ export default function Today() {
               </>
             )}
           </div>
-          <button
-            onClick={refreshBriefing}
-            disabled={refreshing || briefing.loading}
-            title={briefing.data?.generated ? 'AI briefing. Regenerate' : 'Regenerate briefing'}
-            className="shrink-0 w-9 h-9 grid place-items-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-3 disabled:opacity-40"
-            aria-label="Regenerate briefing"
-          >
-            {refreshing ? <LoadingSpinner /> : <RefreshCw size={16} />}
-          </button>
+          <div className="shrink-0 flex items-center gap-1">
+            <button
+              onClick={() =>
+                askAloud(
+                  '[Rama tapped Listen on the Today page. Call get_briefing and give the briefing out loud.]',
+                  'Listen to briefing'
+                )
+              }
+              disabled={briefing.loading || !!briefing.error}
+              title="Listen to the briefing"
+              className="w-9 h-9 grid place-items-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-3 disabled:opacity-40"
+              aria-label="Listen to the briefing"
+            >
+              <Volume2 size={16} />
+            </button>
+            <button
+              onClick={refreshBriefing}
+              disabled={refreshing || briefing.loading}
+              title={briefing.data?.generated ? 'AI briefing. Regenerate' : 'Regenerate briefing'}
+              className="w-9 h-9 grid place-items-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-3 disabled:opacity-40"
+              aria-label="Regenerate briefing"
+            >
+              {refreshing ? <LoadingSpinner /> : <RefreshCw size={16} />}
+            </button>
+          </div>
         </motion.header>
         <TryCommands page="today" />
 

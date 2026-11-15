@@ -25,7 +25,15 @@ export function ConfirmCard({ id, onDecide = resolveByTap, hint = 'or say "yes"'
     >
       <div className="flex items-start gap-2">
         <ShieldCheck size={14} className={cn('mt-0.5 shrink-0', waiting ? 'text-warning' : 'text-text-muted')} />
-        <p className="flex-1 min-w-0 text-text-primary">{c.summary}</p>
+        <p className="flex-1 min-w-0 text-text-primary">
+          {c.link ? (
+            <a href={c.link} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
+              {c.summary}
+            </a>
+          ) : (
+            c.summary
+          )}
+        </p>
         <Badge intent={meta.intent} className="shrink-0">
           {meta.label}
         </Badge>

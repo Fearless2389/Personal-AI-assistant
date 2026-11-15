@@ -196,6 +196,24 @@ export async function warmUp() {
 }
 
 /**
+ * Ask Nexus something out loud without holding the mic: a button such as Today's
+ * "Listen" connects (inside the click, so audio may play) and sends `text` as a
+ * typed turn; the answer is spoken and shown in the voice panel under `cue`.
+ */
+export async function askAloud(text, cue) {
+  if (talking) return;
+  set({ panelOpen: true });
+  try {
+    await ensureAudio();
+    await ensureSession();
+  } catch (err) {
+    setStatus('error', friendlyError(err));
+    return;
+  }
+  tellModel(cue, text);
+}
+
+/**
  * Kill switch (Esc, or the Stop button): silence Nexus now, drop the rest of what it
  * was saying, and cancel every action still waiting for a yes. The session stays
  * open, so the next press works straight away.

@@ -1,10 +1,25 @@
 // One confirmation chip for something Nexus did ("Tracking Uber · OA · Fri 6 PM").
 // Used by the ⌘K capture bar and the voice panel. Clickable when there's a page to
-// open for it; failures render in the danger tone.
+// open for it (or a website, for open_website); failures render in the danger tone.
+// Changes to Rama's own data get an Undo button beside the chip.
 import { summarizeTool, chipTarget } from '../../lib/toolSummary.js';
+import { UndoButton } from './UndoButton.jsx';
 import { cn } from '../../lib/utils.js';
 
 export function ActionChip({ action, onNavigate }) {
+  const undoId = action.result?.undoable ? action.result.action_id : null;
+  if (!undoId) return <Chip action={action} onNavigate={onNavigate} />;
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex-1 min-w-0">
+        <Chip action={action} onNavigate={onNavigate} />
+      </div>
+      <UndoButton actionId={undoId} />
+    </div>
+  );
+}
+
+function Chip({ action, onNavigate }) {
   const s = summarizeTool(action.name, action.args, action.result);
   const to = s.ok ? chipTarget(action) : null;
   const Icon = s.icon;
@@ -14,12 +29,18 @@ export function ActionChip({ action, onNavigate }) {
       <span className="truncate">{s.text}</span>
     </>
   );
+  const linkClass =
+    'w-full flex items-center gap-2 rounded-lg bg-nexus-primary/[0.07] border border-nexus-primary/20 px-2.5 py-1.5 text-sm text-text-primary text-left hover:border-nexus-primary/45';
+  if (s.ok && s.href) {
+    return (
+      <a href={s.href} target="_blank" rel="noopener noreferrer" className={linkClass}>
+        {body}
+      </a>
+    );
+  }
   if (to && onNavigate) {
     return (
-      <button
-        onClick={() => onNavigate(to)}
-        className="w-full flex items-center gap-2 rounded-lg bg-nexus-primary/[0.07] border border-nexus-primary/20 px-2.5 py-1.5 text-sm text-text-primary text-left hover:border-nexus-primary/45"
-      >
+      <button onClick={() => onNavigate(to)} className={linkClass}>
         {body}
       </button>
     );

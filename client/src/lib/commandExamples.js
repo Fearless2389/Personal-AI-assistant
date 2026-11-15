@@ -1,7 +1,7 @@
 // Example things to say or type on each page, shown by <TryCommands page="…" />.
 // Each one maps to a real assistant tool, so every example actually works.
 export const COMMAND_EXAMPLES = {
-  today: ["what's due this week?", 'anything from Amazon recruiting?', 'what did you just do?'],
+  today: ['good morning', 'anything from Amazon recruiting?', 'open LeetCode'],
   applications: [
     'applied to Uber SDE intern off-campus, OA Friday 6 PM',
     'got the Google interview',
