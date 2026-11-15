@@ -15,7 +15,7 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
 
 ## Key patterns
 
-- **Tools** (20) live in one dispatcher shared by chat and voice: `server/services/tools.js` →
+- **Tools** (23) live in one dispatcher shared by chat and voice: `server/services/tools.js` →
   `handleToolCall`, which routes to small handler modules. Declarations: `services/gemini.js` (core),
   `manageDeclarations.js`, `googleDeclarations.js`.
   - Core: create_note, create_task, create_calendar_event, schedule_reminder, search_memory,
@@ -24,7 +24,15 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
     manage_note, manage_goal, manage_reminder. Items are found **by name** via `matcher.js#pickByName`
     (tested; ambiguous → `needs_choice`, never a guess).
   - Google (`googleTools.js`): search_email, read_email, draft_email, send_email, manage_calendar_event.
-  - The chat loop chains up to `MAX_TOOL_ROUNDS` (3) using `gemini.js#streamTurn`.
+  - Web (`webTools.js`): web_search (`webSearch.js`: Tavily if `TAVILY_API_KEY`, else Wikipedia),
+    read_webpage (`webFetch.js`, SSRF-guarded: `isPublicAddress`/`checkUrl` tested; redirects re-checked).
+  - UI (`uiTools.js`): open_page → `{ navigate }`; the client follows it via `lib/navigation.js` (known pages only).
+  - The chat loop chains up to `MAX_TOOL_ROUNDS` (3) using `gemini.js#streamTurn`; round one goes through
+    `firstTurnWithFallback` (20 s first-chunk deadline → next model in `CHAT_MODELS`, hung model skipped 10 min);
+    later rounds stay on the same model (thought signatures are per model). AI workflows call
+    `generateStructured(system, schema, prompt)` (same fallback) instead of `getStructuredModel` directly.
+  - The system prompt includes `accountProfile.accountBlock` (Rama's own email, Google/SMS status) so the
+    assistant never asks for facts the app already has.
   New tool → a risk level in `actionPolicy.js` (unlisted = gated; per-action levels allowed), a chip in
   `client/src/lib/toolSummary.js`, refresh keys in `store/useRefreshStore.js`, and a `useRefreshKey` in
   the page that shows it.
@@ -51,7 +59,10 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
   turns are saved via `POST /api/voice/turn` (`session_id` = `voice-<uuid>`). Server: `services/voice.js`,
   `routes/voice.js`; prompt context from `services/assistantContext.js` (shared with chat). Client:
   `lib/voice/` (audio, liveSession, engine) → `useVoiceStore` → `components/voice/VoiceOrb.jsx` in the
-  TopBar (hold orb or Ctrl+Alt+Space). Live API gotchas (REST token field is `bidiGenerateContentSetup`,
+  TopBar (hold orb or Ctrl+Alt+Space). Resumption: the token may carry `sessionResumption.handle`; the engine
+  keeps the newest handle ~110 min (End voice forgets). Global hotkey: `tools/hotkey/nexus-hotkey.ps1` →
+  `POST /api/hotkey/:dir` (loopback + `HOTKEY_SECRET`) → SSE `GET /api/hotkey/events` → `lib/voice/hotkeyBridge.js`
+  (one tab via Web Locks). Live API gotchas (REST token field is `bidiGenerateContentSetup`,
   a tool call ends its own silent turn): `spikes/live-voice/FINDINGS.md`.
 - **Dates are answered by query, not vectors.** `services/agenda.js` (`listUpcoming`) merges tasks,
   application next-steps and events; it feeds the chat system prompt, `list_upcoming` and the Today
@@ -63,8 +74,8 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
 - **Today page duplication rule:** dated items render only in the timeline; deadline/overdue
   nudges attach to their row as actions; "Nexus noticed" shows only `follow_up` nudges.
 - **AI workflows** = the framework-free alternative to LangChain. One file per workflow in
-  `server/services/workflows/`: gather context → `getStructuredModel(system, schema)` →
-  `JSON.parse(result.response.text())` → typed object, **always with a deterministic fallback**.
+  `server/services/workflows/`: gather context → `JSON.parse(await generateStructured(system, schema, prompt))`
+  → typed object, **always with a deterministic fallback**.
   Examples: `morningBriefing.js`, `weeklyReview.js`.
 - **SSE framing** is exactly `data: <json>\n\n`. Memory writes are fire-and-forget via `setImmediate`.
 - **Semantic memory:** embed with `embedAndStore(userId, table, id, text)`; search via

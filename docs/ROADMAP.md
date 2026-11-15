@@ -61,11 +61,11 @@ None blocking. New ones get added here as they come up.
 | --- | --- | --- |
 | Web Speech mic button (chat, ⌘K) | shipped | Chrome-only, one-shot dictation. |
 | Push-to-talk inside Nexus (hold orb or Ctrl+Alt+Space) | shipped | Phase 1. `components/voice/VoiceOrb.jsx`. |
-| Push-to-talk hotkey (global, via tray helper) | v1 | Phase 4. Spike works: `spikes/live-voice/tray.ps1`. See section 6. |
+| Push-to-talk hotkey (global, via tray helper) | shipped | Phase 4. `cd server; npm run hotkey`. Loopback + `HOTKEY_SECRET` only; one tab listens (Web Locks); a hold auto-releases after 60 s. |
 | Real-time voice conversation (Gemini Live) | shipped | Phase 1. `gemini-3.8-live` (free tier). ~0.7–0.9 s to first spoken word, ~1.5 s with a tool call. Click the orb to pre-warm (setup 2–3 s). |
 | Barge-in (interrupt it mid-sentence) | shipped | Phase 1. Local playback stops at once; server confirms with `interrupted`. |
 | Live transcript + action chips while speaking | shipped | Phase 1. Shared `ActionChip` with ⌘K. Voice turns saved to conversations (memory). |
-| Session resumption across the ~10 min connection limit | v1 | Phase 1 reconnects fresh on the next press (in-session context lost; saved turns kept). |
+| Session resumption across the ~10 min connection limit | shipped | Phase 5. Resume handles (~2 h) reused after a drop, the 10-minute limit or the idle close; End voice forgets. Verified with memory tools disabled. |
 | Voice persona / choice of voice | next | |
 | Wake word ("Hey Nexus") | later | Needs an always-on local process. |
 | Hindi/Telugu code-mixing | later | v1 is English only. |
@@ -92,7 +92,8 @@ None blocking. New ones get added here as they come up.
 | --- | --- | --- |
 | Notes, tasks, applications, habits, reminders, memory search | shipped | |
 | Today timeline, nudges, pipeline | shipped | |
-| Voice navigation ("open my applications") | v1 | Client-side tool. |
+| Voice navigation ("open my applications") | shipped | Phase 5. `open_page` tool → `{ navigate }` → `lib/navigation.js`; only the app's own pages. |
+| "Say or type" example commands on each page | shipped | `components/shared/TryCommands.jsx`, examples in `lib/commandExamples.js`; click fills ⌘K, × hides per page. |
 | Task recurrence + subtasks | later | |
 | Task ↔ goal linking | later | |
 | Notes debounced autosave | later | |
@@ -117,9 +118,10 @@ None blocking. New ones get added here as they come up.
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Web search with sources | v1 | Gemini grounding with Google Search. |
-| Read + summarise a URL | v1 | Server-side fetch. |
-| Company research before an interview | v1 | Search + summarise into a note. |
+| Web search with sources | shipped | Phase 4. Gemini Search grounding has no free quota on this key (429 on every model), so `webSearch.js` uses Tavily when `TAVILY_API_KEY` is set (free ~1,000/month) and Wikipedia otherwise. |
+| Read + summarise a URL | shipped | Phase 4. `webFetch.js`: public http(s) only — private/loopback/metadata IPs, local names, odd ports and DNS that resolves inward are refused; redirects re-checked. |
+| Company research before an interview | shipped | Phase 4. Prompt chains web_search → read_webpage → create_note with sources. |
+| Add a Tavily key | next | Until then search is Wikipedia-only (no news, prices or postings). |
 | Act on logged-in sites (portals, forms) | next | Moved into the browser agent track (section 6b). v1 stays read-only. |
 | Track job postings / new openings | next | Browser agent: watch portals for new drives, nudge in Nexus. |
 
@@ -143,7 +145,7 @@ extend to local Windows apps (section 6).
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Tray helper for the global push-to-talk hotkey | v1 | Hotkey → focus Nexus + start/stop listening. First local component. |
+| Tray helper for the global push-to-talk hotkey | shipped | Phase 4. `tools/hotkey/nexus-hotkey.ps1`. First local component. |
 | Open apps / files / URLs, media, volume | later | Needs a local companion app. |
 | Screen understanding (screenshot + vision) | later | |
 
@@ -164,8 +166,8 @@ extend to local Windows apps (section 6).
 | Code-split the client bundle (~820 KB) | later | |
 | Fix 10 pre-existing lint errors | later | `set-state-in-effect` in older pages + 3 unused imports. |
 | Habit dates use the server clock | next | `habitService.dayStr` uses the server's timezone; fine on the laptop, off by a day once deployed (UTC). The assistant's tool already passes the user's date. |
-| Chat model fallback + request timeout | next | 2026-11-14: `gemini-flash-latest` hung (no response for minutes) while `gemini-flash-lite-latest` answered in ~1 s. Chat has no timeout, so it just spins. Add a timeout and a configurable fallback model. |
-| Chat composer under the mobile nav | next | At phone width the chat input sits partly behind the bottom navigation bar. |
+| Chat model fallback + request timeout | shipped | `gemini.js`: 20 s to first chunk / 45 s between chunks, then the next model in `CHAT_MODELS` (env `GEMINI_CHAT_MODEL`, `GEMINI_CHAT_FALLBACK_MODEL`); a hung model is skipped for 10 min. Workflows use `generateStructured` with the same fallback. |
+| Chat composer under the mobile nav | shipped | Fixed: the chat page subtracts the nav height on phones. |
 
 ### 9. Small UX ideas
 
@@ -187,6 +189,10 @@ extend to local Windows apps (section 6).
 - **2026-11-14** — Phase 1 (voice core) built: voice orb + transcript panel, locked-setup tokens,
   tools via the shared dispatcher, voice turns saved to memory. Also fixed model datetimes with no
   offset being stored as UTC (affected text chat too). Verified against live Supabase and pushed.
+- **2026-11-15** — Phases 4–5: read-only web (Tavily/Wikipedia search, SSRF-guarded page reading),
+  global push-to-talk tray helper, voice navigation, voice session resumption, "say or type" examples on
+  every page, Nexus knows Rama's own email/services, chat + workflow model fallback with timeouts
+  (`gemini-flash-latest` hung for a day), mobile chat composer fix.
 - **2026-11-14** — Phase 3 built: voice/chat parity with every section (`manage_*` tools, find by
   name), Gmail search/read/draft/send, calendar edit/delete, typed chat gated with the same cards,
   prompt-injection guard + red-team, voice backstop for a missed spoken "yes". Fixed: chat tool chaining

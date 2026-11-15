@@ -28,13 +28,18 @@ memory. Built solo by Rama on a strict free-tier-only stack.
 - **Does what the pages do** — by voice or chat: create, check in, list or delete habits; complete,
   reschedule or delete tasks; read and append notes; goals and milestones; cancel reminders. Name things
   the way you say them ("the resume task"); if two match, Nexus asks which.
+- **Web** — "research Atlassian before my interview" searches, reads the best page and saves a brief
+  with sources. Pages are read safely (no private/internal addresses) and treated as untrusted.
+  Real web search needs a free Tavily key; without one, search falls back to Wikipedia.
+- **Global push-to-talk** — `npm run hotkey` adds a tray icon: hold Ctrl+Alt+Space anywhere in Windows.
+  Voice also remembers the conversation across reconnects (about 2 hours), and "open my habits" switches pages.
 - **Gmail + Calendar** — "anything from Amazon recruiting?", "read it", "draft a reply", "move my 5 PM to
   6", "delete the mock interview". Drafts land in Gmail Drafts; sending always waits for your OK.
 - **Confirm before acting** — anything that leaves Nexus or can't be undone (sending email, calendar
   changes, SMS, deletes) waits for your OK: tap Confirm, or say/type "yes". Esc stops everything. Emails
   are treated as untrusted data, so a malicious email can't make Nexus act. Every action from voice and
   chat is logged: Settings → Recent actions, or ask "what did you just do?".
-- **Chat** — streaming Gemini with memory + 20 tools, chaining up to 3 tool rounds per
+- **Chat** — streaming Gemini with memory + 23 tools (falls back to a second model if the first hangs), chaining up to 3 tool rounds per
   message. Every turn sees the next 7 days of deadlines straight from the database.
 - **Morning briefing** — timezone-correct, prioritises placement deadlines; scheduler pass
   generates it daily at your chosen hour (delivery channel pluggable — SMS/WhatsApp when configured).

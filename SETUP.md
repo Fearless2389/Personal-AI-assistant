@@ -94,6 +94,19 @@ CLIENT_ORIGIN=http://localhost:5173
 PORT=3001
 ```
 
+Optional:
+
+```
+TAVILY_API_KEY=...               # real web search (free ~1,000/month at tavily.com); without it, Wikipedia only
+HOTKEY_SECRET=...                # any long random value; enables the global Ctrl+Alt+Space tray helper
+GEMINI_CHAT_MODEL=gemini-flash-latest              # chat model (default)
+GEMINI_CHAT_FALLBACK_MODEL=gemini-flash-lite-latest # used when the first one hangs or is overloaded
+```
+
+Global push-to-talk (Windows): with the server running, `cd server; npm run hotkey`. A tray icon
+appears; hold Ctrl+Alt+Space anywhere to talk to the open Nexus tab (click the tab once after
+loading it — browsers require that before audio can play).
+
 **`client/.env`**:
 
 ```
