@@ -72,7 +72,8 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)]">
+    // Phones: also leave room for the fixed bottom nav (4rem + safe area), or it covers the composer.
+    <div className="flex h-[calc(100dvh-3.5rem-4rem-env(safe-area-inset-bottom))] md:h-[calc(100dvh-3.5rem)]">
       {/* Conversation */}
       <section className="flex-1 flex flex-col min-w-0">
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-4">
