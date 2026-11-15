@@ -69,7 +69,7 @@ None blocking. New ones get added here as they come up.
 | Voice persona / choice of voice | next | |
 | Wake word ("Hey Nexus") | later | Needs an always-on local process. |
 | Hindi/Telugu code-mixing | later | v1 is English only. |
-| Speaks the morning briefing aloud | next | Pairs with the existing briefing engine. |
+| Speaks the morning briefing aloud | shipped | `get_briefing` tool (same workflow + cache as Today); "good morning" in voice/chat, or the speaker button on Today (`engine.askAloud`). |
 
 ### 2. Brain & safety
 
@@ -78,7 +78,7 @@ None blocking. New ones get added here as they come up.
 | 20 Nexus tools, 3-round tool chaining | shipped | `services/tools.js`, shared by chat and voice. Phase 3 added `manage_*` (one per section, by name) + Gmail + calendar edits. |
 | Confirmation gate for risky tools | shipped | Phase 2. `actionPolicy.js` risk table (safe / confirm / never; unknown = confirm). Tap Confirm or say yes; the yes is checked against your mic transcript, not the model. 2-min expiry. |
 | Action log ("what did you just do?") | shipped | Phase 2. `action_log` (migration 006), voice + chat, Settings → Recent actions, `list_recent_actions` tool. |
-| Undo for logged actions | next | Log has what's needed (tool + args + result ids). |
+| Undo for logged actions | shipped | Migration 007. Handlers return undo plans (`undo.js`), the gate stores them; "undo that", chip and Settings buttons. Own data only, 24 h, once. Calendar/Gmail/websites excluded. |
 | Gate typed chat too | shipped | Phase 3. Chat/⌘K show the same confirmation card; a typed "yes" also counts. |
 | Voice parity with the pages | shipped | Phase 3. Habits, tasks, notes, goals, reminders, calendar events: everything the pages can do. |
 | Prompt-injection guard | shipped | Phase 3 (email). Email content is marked untrusted (invisible characters stripped); sends always need the user's own yes with the recipient shown. Red-team: a malicious email was read 9×, acted on 0×. Web pages join in Phase 4. |
@@ -93,6 +93,7 @@ None blocking. New ones get added here as they come up.
 | Notes, tasks, applications, habits, reminders, memory search | shipped | |
 | Today timeline, nudges, pipeline | shipped | |
 | Voice navigation ("open my applications") | shipped | Phase 5. `open_page` tool → `{ navigate }` → `lib/navigation.js`; only the app's own pages. |
+| Open a website ("open YouTube") | shipped | `open_website` → new browser tab; public http(s) only; asks first for 3 min after email/web content was read. Allow pop-ups for the Nexus site so voice needs no click. |
 | "Say or type" example commands on each page | shipped | `components/shared/TryCommands.jsx`, examples in `lib/commandExamples.js`; click fills ⌘K, × hides per page. |
 | Task recurrence + subtasks | later | |
 | Task ↔ goal linking | later | |
@@ -189,9 +190,13 @@ extend to local Windows apps (section 6).
 - **2026-11-14** — Phase 1 (voice core) built: voice orb + transcript panel, locked-setup tokens,
   tools via the shared dispatcher, voice turns saved to memory. Also fixed model datetimes with no
   offset being stored as UTC (affected text chat too). Verified against live Supabase and pushed.
+- **2026-11-15** — Briefing out loud (`get_briefing`, Today speaker button) and undo for Nexus's changes
+  to your own data (migration 007).
+- **2026-11-15** — `open_website`: "open YouTube" opens a new tab (public links only; asks first right after
+  email/web content). Browser agent (6b) gets a full week-by-week, day-by-day plan and a review before any code.
 - **2026-11-15** — Phases 4–5: read-only web (Tavily/Wikipedia search, SSRF-guarded page reading),
   global push-to-talk tray helper, voice navigation, voice session resumption, "say or type" examples on
-  every page, Nexus knows Rama's own email/services, chat + workflow model fallback with timeouts
+  every page, Nexus knows Ruthvik's own email/services, chat + workflow model fallback with timeouts
   (`gemini-flash-latest` hung for a day), mobile chat composer fix.
 - **2026-11-14** — Phase 3 built: voice/chat parity with every section (`manage_*` tools, find by
   name), Gmail search/read/draft/send, calendar edit/delete, typed chat gated with the same cards,

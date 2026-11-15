@@ -27,6 +27,8 @@ Supabase and Google Cloud consoles.
    - `supabase/migrations/003_calendar_memory_and_sms.sql`
    - `supabase/migrations/004_briefing_and_tz.sql` — your timezone + daily briefing schedule
    - `supabase/migrations/005_applications_and_nudges.sql` — placement tracker + nudge snoozes
+   - `supabase/migrations/006_action_log.sql` — what Nexus did + the confirmation gate
+   - `supabase/migrations/007_action_undo.sql` — undo for actions on your own data
 
    > **Free-tier gotcha:** Supabase pauses a project after ~7 days with no activity. If the app
    > suddenly can't log in and the server logs `fetch failed`, open the dashboard and click

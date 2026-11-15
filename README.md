@@ -2,7 +2,7 @@
 
 A personal AI second-brain web app. One conversational interface that replaces notes,
 tasks, calendar, habits, goals, focus, and reminders — backed by an AI with long-term
-memory. Built solo by Rama on a strict free-tier-only stack.
+memory. Built solo by Ruthvik on a strict free-tier-only stack.
 
 > **Status:** v1.1 — built around placement season. All modules are live (Today, Applications,
 > Chat, Notes, Tasks, Calendar, Habits, Goals, Focus, Weekly Review, Analytics, Settings, SMS
@@ -20,6 +20,10 @@ memory. Built solo by Rama on a strict free-tier-only stack.
   Friday 6pm") becomes the right card/task/event; each action comes back as a confirmation chip.
 - **Today** — command centre: AI read on the day, a next-7-days timeline (tasks, application
   deadlines, events — overdue first, live countdowns, "now" marker), pipeline funnel, habits.
+  Tap the speaker (or say "good morning") and Nexus reads the briefing out loud.
+- **Undo** — "undo that" (or the Undo button on an action chip or in Settings › Recent actions)
+  reverses what Nexus did to your data: un-creates, restores an edit, brings back a deleted note,
+  habit or goal with its history. Calendar changes, emails and opened websites can't be undone.
 - **Applications** — placement tracker: drag-and-drop stage board (Wishlist → Applied → OA →
   Interview → Offer), on/off-campus filter, detail drawer with stage history. Chat updates
   cards in place ("got the Google OA" moves the existing card).
@@ -32,14 +36,15 @@ memory. Built solo by Rama on a strict free-tier-only stack.
   with sources. Pages are read safely (no private/internal addresses) and treated as untrusted.
   Real web search needs a free Tavily key; without one, search falls back to Wikipedia.
 - **Global push-to-talk** — `npm run hotkey` adds a tray icon: hold Ctrl+Alt+Space anywhere in Windows.
-  Voice also remembers the conversation across reconnects (about 2 hours), and "open my habits" switches pages.
+  Voice also remembers the conversation across reconnects (about 2 hours), "open my habits" switches pages, and
+  "open YouTube" opens the site in a new tab (allow pop-ups for the Nexus site once so voice can do it hands-free).
 - **Gmail + Calendar** — "anything from Amazon recruiting?", "read it", "draft a reply", "move my 5 PM to
   6", "delete the mock interview". Drafts land in Gmail Drafts; sending always waits for your OK.
 - **Confirm before acting** — anything that leaves Nexus or can't be undone (sending email, calendar
   changes, SMS, deletes) waits for your OK: tap Confirm, or say/type "yes". Esc stops everything. Emails
   are treated as untrusted data, so a malicious email can't make Nexus act. Every action from voice and
   chat is logged: Settings → Recent actions, or ask "what did you just do?".
-- **Chat** — streaming Gemini with memory + 23 tools (falls back to a second model if the first hangs), chaining up to 3 tool rounds per
+- **Chat** — streaming Gemini with memory + 24 tools (falls back to a second model if the first hangs), chaining up to 3 tool rounds per
   message. Every turn sees the next 7 days of deadlines straight from the database.
 - **Morning briefing** — timezone-correct, prioritises placement deadlines; scheduler pass
   generates it daily at your chosen hour (delivery channel pluggable — SMS/WhatsApp when configured).
@@ -86,7 +91,7 @@ nexus/
 ├── docs/PRD.md                  — product requirements
 ├── supabase/migrations/         — 001 schema · 002 calendar tokens · 003 calendar memory + SMS
 │                                  · 004 timezone + briefing · 005 applications + nudges
-│                                  · 006 action log (also the confirmation record)
+│                                  · 006 action log (also the confirmation record) · 007 undo
 ├── server/
 │   ├── index.js                 — Express entry, mounts /api/*, starts the scheduler
 │   ├── routes/                   — chat, dashboard, agenda, applications, nudges, notes, tasks,

@@ -1,6 +1,6 @@
 # Nexus — Product Requirements Document
 
-> Version 1.0 · Personal AI second-brain · Built solo by Rama
+> Version 1.0 · Personal AI second-brain · Built solo by Ruthvik
 
 ---
 

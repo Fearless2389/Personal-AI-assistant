@@ -15,11 +15,12 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
 
 ## Key patterns
 
-- **Tools** (23) live in one dispatcher shared by chat and voice: `server/services/tools.js` →
+- **Tools** (26) live in one dispatcher shared by chat and voice: `server/services/tools.js` →
   `handleToolCall`, which routes to small handler modules. Declarations: `services/gemini.js` (core),
   `manageDeclarations.js`, `googleDeclarations.js`.
   - Core: create_note, create_task, create_calendar_event, schedule_reminder, search_memory,
-    track_application, list_applications, list_upcoming, list_recent_actions, resolve_pending_action.
+    track_application, list_applications, list_upcoming, list_recent_actions, resolve_pending_action,
+    undo_action (both dispatched by the gate itself), get_briefing (`briefingTools.js`, same workflow + cache as Today).
   - `manage_*` (`manageTools.js`): one tool per section with an `action` — manage_task, manage_habit,
     manage_note, manage_goal, manage_reminder. Items are found **by name** via `matcher.js#pickByName`
     (tested; ambiguous → `needs_choice`, never a guess).
@@ -27,11 +28,14 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
   - Web (`webTools.js`): web_search (`webSearch.js`: Tavily if `TAVILY_API_KEY`, else Wikipedia),
     read_webpage (`webFetch.js`, SSRF-guarded: `isPublicAddress`/`checkUrl` tested; redirects re-checked).
   - UI (`uiTools.js`): open_page → `{ navigate }`; the client follows it via `lib/navigation.js` (known pages only).
+    open_website → `{ open }` (public http(s) only, `websiteUrl` tested) → `navigation.js#openExternal` (new tab,
+    opener cut; if the pop-up blocker refuses, the chip is the link). `actionPolicy.effectiveRisk` makes it
+    `confirm` for 3 min after search_email/read_email/web_search/read_webpage ran, so planted links can't open themselves.
   - The chat loop chains up to `MAX_TOOL_ROUNDS` (3) using `gemini.js#streamTurn`; round one goes through
     `firstTurnWithFallback` (20 s first-chunk deadline → next model in `CHAT_MODELS`, hung model skipped 10 min);
     later rounds stay on the same model (thought signatures are per model). AI workflows call
     `generateStructured(system, schema, prompt)` (same fallback) instead of `getStructuredModel` directly.
-  - The system prompt includes `accountProfile.accountBlock` (Rama's own email, Google/SMS status) so the
+  - The system prompt includes `accountProfile.accountBlock` (Ruthvik's own email, Google/SMS status) so the
     assistant never asks for facts the app already has.
   New tool → a risk level in `actionPolicy.js` (unlisted = gated; per-action levels allowed), a chip in
   `client/src/lib/toolSummary.js`, refresh keys in `store/useRefreshStore.js`, and a `useRefreshKey` in
@@ -46,6 +50,13 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
   chat). Before parking, `tools.js#prepareAction` resolves and pins the target (`target_id`,
   `target_label`, validated email recipients) so the readback is exact. Deletes, sends and calendar
   edits are `confirm`. Kill switch: Esc / Stop → `engine.stopAll()` → `POST /api/actions/cancel-pending`.
+- **Undo** (`services/undo.js`, migration 007): a handler that changes Ruthvik's data returns `undo: [steps]`
+  next to its result (delete what it created, `restoreStep` the old values, `snapshotForDelete` before a delete,
+  incl. habit logs / goal milestones). The gate strips it from what the model sees, stores it in
+  `action_log.undo`, and returns `action_id` + `undoable`. `undoAction` (tool `undo_action`, `POST
+  /api/actions/:id/undo`, Undo buttons) runs it once: executed → undone (CAS) → `applyUndo`, reverted if it
+  fails. Plans are whitelisted by `validateUndo`; `undoBlockedReason` allows 24 h. New data-changing tool →
+  return an undo plan. Google Calendar, Gmail and websites have none (said so).
   Voice backstop: if the model doesn't route a spoken answer, the client posts the user's transcript to
   `/api/actions/:id/resolve` (`utterance`), and the server applies the same yes/no check.
   Client: `lib/confirmations.js` + `store/useConfirmStore.js` + `components/shared/ConfirmCard.jsx`
@@ -59,7 +70,8 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
   turns are saved via `POST /api/voice/turn` (`session_id` = `voice-<uuid>`). Server: `services/voice.js`,
   `routes/voice.js`; prompt context from `services/assistantContext.js` (shared with chat). Client:
   `lib/voice/` (audio, liveSession, engine) → `useVoiceStore` → `components/voice/VoiceOrb.jsx` in the
-  TopBar (hold orb or Ctrl+Alt+Space). Resumption: the token may carry `sessionResumption.handle`; the engine
+  TopBar (hold orb or Ctrl+Alt+Space). `engine.askAloud(text, cue)` sends a typed request from a button
+  (Today's Listen → get_briefing, spoken). Resumption: the token may carry `sessionResumption.handle`; the engine
   keeps the newest handle ~110 min (End voice forgets). Global hotkey: `tools/hotkey/nexus-hotkey.ps1` →
   `POST /api/hotkey/:dir` (loopback + `HOTKEY_SECRET`) → SSE `GET /api/hotkey/events` → `lib/voice/hotkeyBridge.js`
   (one tab via Web Locks). Live API gotchas (REST token field is `bidiGenerateContentSetup`,
