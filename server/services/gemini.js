@@ -190,28 +190,89 @@ export async function getEmbedding(text) {
  * raw chunk parts, which keep it (verified live, 2026-11-14).
  */
 export async function streamTurn(model, contents, onText = () => {}) {
-  const stream = await model.generateContentStream({ contents });
+  // Our own deadline, not the SDK's `timeout` (that one keeps running after the
+  // stream starts and would cut long answers off): FIRST_CHUNK_MS to start
+  // answering, then CHUNK_GAP_MS between chunks. A model that never answers (seen
+  // live: gemini-flash-latest hung for a day) fails fast instead of spinning.
+  const ctrl = new AbortController();
+  let timer = setTimeout(() => ctrl.abort(), FIRST_CHUNK_MS);
   const parts = [];
   let text = '';
-  for await (const chunk of stream.stream) {
-    for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
-      parts.push(part);
-      if (part.text && !part.thought) {
-        text += part.text;
-        onText(part.text);
+  try {
+    const stream = await model.generateContentStream({ contents }, { signal: ctrl.signal });
+    for await (const chunk of stream.stream) {
+      clearTimeout(timer);
+      timer = setTimeout(() => ctrl.abort(), CHUNK_GAP_MS);
+      for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
+        parts.push(part);
+        if (part.text && !part.thought) {
+          text += part.text;
+          onText(part.text);
+        }
       }
     }
+  } finally {
+    clearTimeout(timer);
   }
   const calls = parts.filter((p) => p.functionCall).map((p) => p.functionCall);
   return { text, calls, content: { role: 'model', parts } };
 }
 
-export function getChatModel(systemInstruction) {
-  return genAI.getGenerativeModel({
-    model: 'gemini-flash-latest',
-    systemInstruction,
-    tools
-  });
+const FIRST_CHUNK_MS = 20_000;
+const CHUNK_GAP_MS = 45_000;
+
+// Chat models in order of preference; override with env. If the first one times
+// out or is overloaded before saying anything, it's skipped for MODEL_DOWN_MS.
+export const CHAT_MODELS = [
+  ...new Set([
+    process.env.GEMINI_CHAT_MODEL || 'gemini-flash-latest',
+    process.env.GEMINI_CHAT_FALLBACK_MODEL || 'gemini-flash-lite-latest'
+  ])
+];
+const MODEL_DOWN_MS = 10 * 60_000;
+const downUntil = new Map(); // model name → timestamp
+
+export function getChatModel(systemInstruction, name = CHAT_MODELS[0]) {
+  return genAI.getGenerativeModel({ model: name, systemInstruction, tools });
+}
+
+/** Worth trying another model: a timeout, overload, quota or server error — not a bad request. */
+export function isModelUnavailable(err) {
+  return (
+    err?.name === 'AbortError' ||
+    /abort|timed? ?out|fetch failed|\b(429|500|502|503|504)\b|overloaded|unavailable|exhausted/i.test(
+      err?.message ?? ''
+    )
+  );
+}
+
+/**
+ * Stream the first turn of a chat request on the first healthy model, falling back
+ * if a model is unavailable before it says anything. Returns the model that
+ * answered: later rounds must reuse it (thought signatures are per model).
+ * → { model, name, turn }
+ */
+export async function firstTurnWithFallback(systemInstruction, contents, onText) {
+  const healthy = CHAT_MODELS.filter((n) => (downUntil.get(n) ?? 0) <= Date.now());
+  let lastErr;
+  for (const name of healthy.length ? healthy : CHAT_MODELS) {
+    const model = getChatModel(systemInstruction, name);
+    let spoke = false;
+    try {
+      const turn = await streamTurn(model, contents, (t) => {
+        spoke = true;
+        onText(t);
+      });
+      downUntil.delete(name);
+      return { model, name, turn };
+    } catch (err) {
+      lastErr = err;
+      if (spoke || !isModelUnavailable(err)) throw err;
+      downUntil.set(name, Date.now() + MODEL_DOWN_MS);
+      console.warn(`[gemini] ${name} unavailable (${String(err.message).slice(0, 90)}); trying the next model`);
+    }
+  }
+  throw lastErr;
 }
 
 /**
@@ -220,13 +281,40 @@ export function getChatModel(systemInstruction) {
  * no tool loop, no streaming, just "reason over context → typed JSON out".
  * `responseSchema` uses the same OBJECT/STRING/ARRAY type strings as `tools`.
  */
-export function getStructuredModel(systemInstruction, responseSchema) {
+export function getStructuredModel(systemInstruction, responseSchema, name = CHAT_MODELS[0]) {
   return genAI.getGenerativeModel({
-    model: 'gemini-flash-latest',
+    model: name,
     systemInstruction,
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema
     }
   });
+}
+
+const STRUCTURED_TIMEOUT_MS = 25_000;
+
+/**
+ * One structured (JSON) call for an AI workflow, with the same model fallback and
+ * down-marking as chat, and a deadline per attempt. Returns the response text; the
+ * workflow parses it and keeps its deterministic fallback for anything that fails.
+ */
+export async function generateStructured(systemInstruction, responseSchema, prompt) {
+  const healthy = CHAT_MODELS.filter((n) => (downUntil.get(n) ?? 0) <= Date.now());
+  let lastErr;
+  for (const name of healthy.length ? healthy : CHAT_MODELS) {
+    try {
+      const result = await getStructuredModel(systemInstruction, responseSchema, name).generateContent(prompt, {
+        timeout: STRUCTURED_TIMEOUT_MS // fine here: not a stream, the whole call is one request
+      });
+      downUntil.delete(name);
+      return result.response.text();
+    } catch (err) {
+      lastErr = err;
+      if (!isModelUnavailable(err)) throw err;
+      downUntil.set(name, Date.now() + MODEL_DOWN_MS);
+      console.warn(`[gemini] ${name} unavailable for a workflow; trying the next model`);
+    }
+  }
+  throw lastErr;
 }

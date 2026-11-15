@@ -11,7 +11,7 @@
 //  Weekly Review, "plan my day", etc. will follow this same shape.
 // ─────────────────────────────────────────────────────────────────────────────
 import { supabaseAdmin } from '../supabase.js';
-import { getStructuredModel } from '../gemini.js';
+import { generateStructured } from '../gemini.js';
 import * as calendarService from '../calendarService.js';
 import { DEFAULT_TZ, dayRangeUtc, hourInTz, formatInTz } from '../time.js';
 import { ACTIVE_STAGES } from '../applicationService.js';
@@ -219,9 +219,7 @@ Write a short, energizing ${ctx.part} briefing grounded in their REAL tasks, pla
 They are in placement season: an OA or interview in the next 48h almost always outranks routine tasks.
 Reference specifics — don't be generic. Choose the 3 things that actually matter most today.
 Warm but concise. No filler, no motivational-poster clichés.`;
-    const model = getStructuredModel(system, BRIEFING_SCHEMA);
-    const result = await model.generateContent(renderContext(ctx));
-    const parsed = JSON.parse(result.response.text());
+    const parsed = JSON.parse(await generateStructured(system, BRIEFING_SCHEMA, renderContext(ctx)));
     if (parsed?.greeting && Array.isArray(parsed.priorities)) {
       briefing = parsed;
       generated = true;

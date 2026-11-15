@@ -4,7 +4,7 @@
 //  with a deterministic fallback. Persists a markdown copy to `weekly_reviews`.
 // ─────────────────────────────────────────────────────────────────────────────
 import { supabaseAdmin } from '../supabase.js';
-import { getStructuredModel } from '../gemini.js';
+import { generateStructured } from '../gemini.js';
 
 const REVIEW_SCHEMA = {
   type: 'OBJECT',
@@ -132,9 +132,7 @@ export async function runWeeklyReview(userId, { userName } = {}) {
   let generated = false;
   try {
     const system = `You are Nexus, ${userName ?? 'the user'}'s second brain. Write an honest, encouraging weekly review grounded ONLY in the data below. Celebrate specific wins, flag what slipped without guilt-tripping, and set 3 concrete priorities for next week.`;
-    const model = getStructuredModel(system, REVIEW_SCHEMA);
-    const result = await model.generateContent(renderContext(c));
-    const parsed = JSON.parse(result.response.text());
+    const parsed = JSON.parse(await generateStructured(system, REVIEW_SCHEMA, renderContext(c)));
     if (parsed?.headline && Array.isArray(parsed.priorities)) {
       review = parsed;
       generated = true;

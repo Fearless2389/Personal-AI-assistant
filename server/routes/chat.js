@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { supabaseAdmin } from '../services/supabase.js';
-import { getChatModel, streamTurn } from '../services/gemini.js';
+import { firstTurnWithFallback, streamTurn } from '../services/gemini.js';
 import { embedAndStore, retrieveMemory, buildSystemPrompt } from '../services/memory.js';
 import { MEMORY_THRESHOLD } from '../services/tools.js';
 import { dispatchAssistantTool } from '../services/actionGate.js';
@@ -21,6 +21,9 @@ function friendlyAiError(err) {
   }
   if (/API key|permission|403|401/i.test(msg))
     return 'The Gemini API key was rejected. Check GEMINI_API_KEY in server/.env.';
+  if (err?.name === 'AbortError' || /abort|timed? ?out/i.test(msg)) {
+    return "Gemini didn't respond in time (main and backup model). Try again in a minute.";
+  }
   if (/fetch failed|ENOTFOUND|ECONNRESET|network/i.test(msg)) return "Couldn't reach Gemini. Check your connection.";
   return 'Something went wrong generating a reply. Try again.';
 }
@@ -93,8 +96,6 @@ router.post('/', requireAuth, async (req, res) => {
       account
     });
 
-    const model = getChatModel(systemInstruction);
-
     // 5) Build Gemini contents: prior turns + the new user message
     let contents = [
       ...(history ?? []).map((h) => ({
@@ -107,11 +108,16 @@ router.post('/', requireAuth, async (req, res) => {
     // 6) Generate → run any tool calls → feed results back → repeat, up to
     //    MAX_TOOL_ROUNDS, so one message can chain steps (look up, then update).
     let assistantText = '';
+    let model;
     for (let round = 0; ; round++) {
-      const turn = await streamTurn(model, contents, (t) => {
+      const onText = (t) => {
         assistantText += t;
         sse(res, { type: 'text', delta: t });
-      });
+      };
+      // Round one picks a healthy model (falls back if one hangs); later rounds stay on it.
+      let turn;
+      if (round === 0) ({ model, turn } = await firstTurnWithFallback(systemInstruction, contents, onText));
+      else turn = await streamTurn(model, contents, onText);
       const { calls } = turn;
       if (!calls.length || round >= MAX_TOOL_ROUNDS) break;
 
