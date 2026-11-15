@@ -86,7 +86,7 @@ export const nudgesApi = {
 };
 
 export const voiceApi = {
-  session: () => request('/api/voice/session', { method: 'POST' }),
+  session: ({ resumeHandle } = {}) => request('/api/voice/session', { method: 'POST', body: { resumeHandle } }),
   tool: (name, args, { utterance, sessionId } = {}) =>
     request('/api/voice/tool', { method: 'POST', body: { name, args, utterance, sessionId } }),
   turn: ({ sessionId, heard, said }) => request('/api/voice/turn', { method: 'POST', body: { sessionId, heard, said } })

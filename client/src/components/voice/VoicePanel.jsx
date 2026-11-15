@@ -126,7 +126,7 @@ export function VoicePanel({ onClose }) {
         {status !== 'off' && (
           <button
             onClick={() => {
-              shutdown();
+              shutdown({ forget: true });
               onClose();
             }}
             className="text-xs text-text-muted hover:text-danger px-2 py-1"

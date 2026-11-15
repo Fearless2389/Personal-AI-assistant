@@ -8,7 +8,7 @@ const SETUP_TIMEOUT_MS = 15_000;
 
 /**
  * handlers: onAudio(b64), onHeard(text), onSaid(text), onToolCall(calls),
- * onInterrupted(), onTurnComplete(), onGoAway(), onClose({ code, reason })
+ * onInterrupted(), onTurnComplete(), onGoAway(), onResumeHandle(handle), onClose({ code, reason })
  */
 export class LiveSession {
   constructor(token, handlers) {
@@ -55,6 +55,8 @@ export class LiveSession {
   dispatch(msg) {
     if (msg.toolCall?.functionCalls?.length) this.h.onToolCall?.(msg.toolCall.functionCalls);
     if (msg.goAway) this.h.onGoAway?.();
+    const resume = msg.sessionResumptionUpdate;
+    if (resume?.newHandle && resume.resumable !== false) this.h.onResumeHandle?.(resume.newHandle);
     const sc = msg.serverContent;
     if (!sc) return;
     if (sc.interrupted) this.h.onInterrupted?.();

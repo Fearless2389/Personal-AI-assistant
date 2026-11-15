@@ -74,7 +74,7 @@ export function VoiceOrb() {
   // Global hotkey from the tray helper (works with Nexus in a background tab).
   useEffect(() => startHotkeyBridge(), []);
 
-  useEffect(() => () => shutdown(), []); // leaving the app (sign-out) ends the session
+  useEffect(() => () => shutdown({ forget: true }), []); // leaving the app (sign-out) ends the conversation
 
   // Close the panel on an outside click, but never mid-conversation.
   useEffect(() => {

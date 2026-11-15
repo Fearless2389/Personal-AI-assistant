@@ -41,7 +41,7 @@ export function buildVoiceInstruction({ settings, tz, upcoming, todaysHabits, ac
 }
 
 /** Session setup locked into the token (BidiGenerateContentSetup). */
-export function voiceSetup(systemInstruction, { voice = 'Puck' } = {}) {
+export function voiceSetup(systemInstruction, { voice = 'Puck', resumeHandle = null } = {}) {
   return {
     model: `models/${VOICE_MODEL}`,
     generationConfig: {
@@ -59,7 +59,11 @@ export function voiceSetup(systemInstruction, { voice = 'Puck' } = {}) {
     inputAudioTranscription: {},
     outputAudioTranscription: {},
     // Sliding-window compression lifts the 15-minute audio-session cap.
-    contextWindowCompression: { slidingWindow: {} }
+    contextWindowCompression: { slidingWindow: {} },
+    // Resumption: the server sends fresh handles; passing one back continues the same
+    // conversation in a new connection (valid ~2 h). Works inside a locked token
+    // (verified live 2026-11-15: a resumed session recalled an earlier code word).
+    sessionResumption: resumeHandle ? { handle: resumeHandle } : {}
   };
 }
 

@@ -23,7 +23,11 @@ let micStarting = null;
 let player = null;
 let session = null;
 let connecting = null; // promise while a session is opening
-let retiring = false; // server sent goAway: open a fresh session on the next press
+let retiring = false; // server sent goAway: open a new connection on the next press
+// Newest resumption handle: a reconnect (idle close, goAway, 10-minute limit) continues
+// the same conversation instead of starting blank. Google keeps them ~2 h.
+let resume = null; // { handle, at }
+const RESUME_TTL_MS = 110 * 60_000;
 let sessionId = null; // conversations.session_id shared by every turn in this tab
 let talking = false; // key/orb held
 let flushing = false; // sending the last buffered mic audio after release
@@ -75,6 +79,16 @@ function ensureAudio() {
   return micStarting;
 }
 
+async function openSession(resumeHandle) {
+  const { token } = await voiceApi.session({ resumeHandle });
+  const s = new LiveSession(
+    token,
+    handlersFor(() => s)
+  );
+  session = s;
+  await s.open();
+}
+
 function ensureSession() {
   if (session?.ready && !retiring) return Promise.resolve();
   if (connecting) return connecting;
@@ -84,13 +98,14 @@ function ensureSession() {
   toolTurnOpen = false;
   connecting = (async () => {
     if (!talking) setStatus('connecting');
-    const { token } = await voiceApi.session();
-    const s = new LiveSession(
-      token,
-      handlersFor(() => s)
-    );
-    session = s;
-    await s.open();
+    const handle = resume && Date.now() - resume.at < RESUME_TTL_MS ? resume.handle : null;
+    try {
+      await openSession(handle);
+    } catch (err) {
+      if (!handle) throw err;
+      resume = null; // the old conversation can't be resumed: start a new one
+      await openSession(null);
+    }
     sessionId ??= `voice-${crypto.randomUUID()}`;
   })()
     .catch((err) => {
@@ -222,8 +237,13 @@ function tellModel(cue, text) {
   scheduleIdle();
 }
 
-/** End the voice session: close the socket, release the microphone, cancel anything pending. */
-export function shutdown() {
+/**
+ * End the voice session: close the socket, release the microphone, cancel anything
+ * pending. `forget` also drops the conversation (End voice, sign-out); the idle
+ * close keeps it so the next press picks up where you left off.
+ */
+export function shutdown({ forget = false } = {}) {
+  if (forget) resume = null;
   cancelAllWaiting();
   clearTimeout(idleTimer);
   persistTurn(answerId);
@@ -374,6 +394,9 @@ function handlersFor(self) {
       if (findTurn(answerId)?.said) persistTurn(answerId);
       if (!talking && get().status === 'thinking') setStatus('ready');
       backstopSpokenAnswer(answerId);
+    },
+    onResumeHandle(handle) {
+      if (live()) resume = { handle, at: Date.now() };
     },
     onGoAway() {
       retiring = true;

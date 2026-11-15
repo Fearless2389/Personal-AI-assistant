@@ -10,13 +10,16 @@ const router = Router();
 const MAX_TRANSCRIPT = 4000;
 
 /**
- * POST /api/voice/session → { token, model, expiresAt }
- * A fresh single-use Live API token with this user's prompt + tools locked in.
+ * POST /api/voice/session { resumeHandle? } → { token, model, expiresAt }
+ * A fresh single-use Live API token with this user's prompt + tools locked in; with a
+ * resume handle, the new connection continues the previous conversation.
  */
 router.post('/session', requireAuth, async (req, res, next) => {
+  const handle = req.body?.resumeHandle;
+  const resumeHandle = typeof handle === 'string' && handle.length > 0 && handle.length < 4096 ? handle : null;
   try {
     const ctx = await loadAssistantContext(req.user.id, { logTag: `voice:${req.id}` });
-    res.json(await mintVoiceToken(voiceSetup(buildVoiceInstruction(ctx))));
+    res.json(await mintVoiceToken(voiceSetup(buildVoiceInstruction(ctx), { resumeHandle })));
   } catch (err) {
     next(err);
   }
