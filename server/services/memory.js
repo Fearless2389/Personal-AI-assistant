@@ -1,4 +1,5 @@
 import { getEmbedding } from './gemini.js';
+import { accountBlock } from './accountProfile.js';
 import { supabaseAdmin } from './supabase.js';
 
 /**
@@ -70,7 +71,8 @@ export function buildSystemPrompt({
   upcoming = [],
   todaysHabits = [],
   tz = 'Asia/Kolkata',
-  currentDateTime = new Date().toISOString()
+  currentDateTime = new Date().toISOString(),
+  account = null
 } = {}) {
   const memoryLines = memoryContext.length
     ? memoryContext.map((m) => `- [${m.source_table}] ${m.content}`).join('\n')
@@ -102,6 +104,9 @@ VOICE
 - Never pad. If one line does the job, send one line. Use Rama's name sparingly and naturally.
 
 Right now it is ${currentDateTime}. Compute every date and time from this — never guess a date.
+
+RAMA'S ACCOUNT (facts about their own setup — use them, never ask for them):
+${account ? accountBlock(account) : '(unavailable right now)'}
 
 RELEVANT MEMORIES (retrieved from past notes and chats):
 ${memoryLines}

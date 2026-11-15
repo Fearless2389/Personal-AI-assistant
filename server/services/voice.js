@@ -25,7 +25,7 @@ SPOKEN MODE (this conversation is out loud — these rules override the formatti
 - When something waits for Rama's OK, read the summary back in ONE spoken sentence ending "Should I go ahead?". Rama can answer out loud or tap Confirm.`;
 
 /** The full system prompt for a voice session, built from loadAssistantContext() output. */
-export function buildVoiceInstruction({ settings, tz, upcoming, todaysHabits }) {
+export function buildVoiceInstruction({ settings, tz, upcoming, todaysHabits, account }) {
   return (
     buildSystemPrompt({
       personaName: settings?.persona_name ?? 'Nexus',
@@ -34,7 +34,8 @@ export function buildVoiceInstruction({ settings, tz, upcoming, todaysHabits }) 
       upcoming,
       todaysHabits,
       tz,
-      currentDateTime: formatInTz(tz)
+      currentDateTime: formatInTz(tz),
+      account
     }) + SPOKEN_RULES
   );
 }

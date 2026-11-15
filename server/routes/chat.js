@@ -78,7 +78,9 @@ router.post('/', requireAuth, async (req, res) => {
       .limit(20);
 
     // 4) Persona, timezone, next 7 days and open habits for the system prompt
-    const { settings, tz, upcoming, todaysHabits } = await loadAssistantContext(userId, { logTag: `chat:${req.id}` });
+    const { settings, tz, upcoming, todaysHabits, account } = await loadAssistantContext(userId, {
+      logTag: `chat:${req.id}`
+    });
 
     const systemInstruction = buildSystemPrompt({
       personaName: settings?.persona_name ?? 'Nexus',
@@ -87,7 +89,8 @@ router.post('/', requireAuth, async (req, res) => {
       upcoming,
       todaysHabits,
       tz,
-      currentDateTime: formatInTz(tz)
+      currentDateTime: formatInTz(tz),
+      account
     });
 
     const model = getChatModel(systemInstruction);

@@ -10,6 +10,7 @@ import {
   markConnectionBroken as markGoogleBroken
 } from './googleAuth.js';
 import { getListCache, setListCache, invalidateListCache, getIdem, setIdem } from './eventCache.js';
+import { forgetGoogleAccount } from './accountProfile.js';
 import { DEFAULT_TZ, dayRangeUtc } from './time.js';
 
 /** Mark the Google connection broken and drop this user's cached event lists. */
@@ -168,6 +169,7 @@ export async function deleteEvent(userId, eventId) {
  * Best-effort revoke at Google. Always clears local tokens regardless of outcome.
  */
 export async function disconnect(userId) {
+  forgetGoogleAccount(userId);
   try {
     const tokens = await loadTokens(userId);
     if (tokens?.refresh_token) {
@@ -197,6 +199,7 @@ export async function disconnect(userId) {
  * Sets status='connected' and last_connected_at.
  */
 export async function completeConnect(userId, { access_token, refresh_token, expiry_date }) {
+  forgetGoogleAccount(userId);
   await saveTokens(userId, { access_token, refresh_token, expiry_date });
   await supabaseAdmin.from('user_settings').upsert(
     {
