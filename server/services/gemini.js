@@ -4,6 +4,7 @@ import { GOOGLE_DECLARATIONS } from './googleDeclarations.js';
 import { WEB_DECLARATIONS } from './webTools.js';
 import { UI_DECLARATIONS } from './uiTools.js';
 import { BRIEFING_DECLARATIONS } from './briefingTools.js';
+import { OWNER_NAME } from './owner.js';
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) console.warn('[gemini] Missing GEMINI_API_KEY in environment.');
@@ -109,7 +110,7 @@ export const tools = [
       },
       {
         name: 'list_applications',
-        description: "List Rama's applications, optionally filtered by stage or on/off-campus.",
+        description: `List ${OWNER_NAME}'s applications, optionally filtered by stage or on/off-campus.`,
         parameters: {
           type: 'OBJECT',
           properties: {
@@ -138,7 +139,7 @@ export const tools = [
       {
         name: 'list_recent_actions',
         description:
-          "What Nexus recently did (or was asked to do) on Rama's behalf, newest first: tool, status " +
+          `What Nexus recently did (or was asked to do) on ${OWNER_NAME}'s behalf, newest first: tool, status ` +
           '(executed, failed, awaiting_confirmation, cancelled, expired) and a summary. Use for ' +
           '"what did you just do", "did that go through", "what is waiting for my OK".',
         parameters: {

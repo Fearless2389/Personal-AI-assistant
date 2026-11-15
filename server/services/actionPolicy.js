@@ -30,7 +30,7 @@ export const RISK = Object.freeze({
   read_webpage: 'safe', // read-only: public pages, private addresses refused (webFetch.js)
   open_page: 'safe', // only switches the app's page
   get_briefing: 'safe',
-  undo_action: 'safe', // reverses Nexus's own change to Rama's data; the plan is checked (undo.js)
+  undo_action: 'safe', // reverses Nexus's own change to Ruthvik's data; the plan is checked (undo.js)
   open_website: 'safe', // a new tab in your browser; asks first right after email/web content (effectiveRisk)
   send_email: 'confirm', // always: it leaves your account and can't be unsent
   manage_calendar_event: Object.freeze({ list: 'safe', '*': 'confirm' }), // your real calendar
@@ -94,7 +94,7 @@ const NOT_UNDOABLE = {
   send_email: 'Sent emails', draft_email: 'Gmail drafts', open_website: 'Opened websites', open_page: 'Page switches'
 };
 
-/** May this logged action be undone now? → null, or the reason it can't (said to Rama). */
+/** May this logged action be undone now? → null, or the reason it can't (said to Ruthvik). */
 export function undoBlockedReason(row, now) {
   if (!row) return 'There is nothing Nexus did recently that can be undone.';
   if (row.status === 'undone') return 'That was already undone.';

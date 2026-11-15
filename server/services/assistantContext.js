@@ -39,7 +39,7 @@ export async function loadAssistantContext(userId, { logTag = 'assistant' } = {}
     listHabitsWithToday(userId)
       .then((habits) => habits.filter((h) => !h.done_today).map((h) => ({ name: h.name })))
       .catch(() => []),
-    // Who Rama is and what's connected (own email, Google, SMS)
+    // Who Ruthvik is and what's connected (own email, Google, SMS)
     loadAccount(userId, settings).catch((err) => {
       console.warn(`[${logTag}] account lookup failed:`, err.message);
       return null;

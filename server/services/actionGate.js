@@ -189,7 +189,7 @@ export async function resolvePending(userId, { id, decision, via, utterance, tz 
 }
 
 /**
- * Reverse an action Nexus took on Rama's own data ("undo that", the Undo button).
+ * Reverse an action Nexus took on Ruthvik's own data ("undo that", the Undo button).
  * id omitted: the newest action that ran. Runs once: the row moves executed → undone
  * before the plan runs, and back if the plan fails.
  */

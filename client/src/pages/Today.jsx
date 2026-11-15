@@ -20,6 +20,7 @@ import { NoticedCard } from '../components/today/NoticedCard.jsx';
 import { HabitsCard } from '../components/today/HabitsCard.jsx';
 import { TryCommands } from '../components/shared/TryCommands.jsx';
 import { askAloud } from '../lib/voice/engine.js';
+import { OWNER_NAME } from '../lib/owner.js';
 
 // Nudge kinds Today shows in "Nexus noticed"; the rest attach to timeline rows
 // (deadline/overdue) or duplicate other cards (habits, tomorrow, overdue-tasks).
@@ -151,7 +152,7 @@ export default function Today() {
             <button
               onClick={() =>
                 askAloud(
-                  '[Rama tapped Listen on the Today page. Call get_briefing and give the briefing out loud.]',
+                  `[${OWNER_NAME} tapped Listen on the Today page. Call get_briefing and give the briefing out loud.]`,
                   'Listen to briefing'
                 )
               }

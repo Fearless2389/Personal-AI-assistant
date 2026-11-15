@@ -1,4 +1,4 @@
-// What the assistant knows about Rama's own setup: their email addresses and which
+// What the assistant knows about Ruthvik's own setup: their email addresses and which
 // services are ready. Without this the assistant can read Gmail but doesn't know
 // whose Gmail it is ("send it to me" → "what's your email?").
 // The Google address is looked up from the connected account (cached per process);
@@ -7,6 +7,7 @@ import { google } from 'googleapis';
 import { supabaseAdmin } from './supabase.js';
 import { getAuthorizedClient } from './googleAuth.js';
 import { isSmsConfigured } from './sms.js';
+import { OWNER_NAME } from './owner.js';
 
 const TTL_MS = 10 * 60_000;
 const googleEmails = new Map(); // userId → { at, email }
@@ -67,16 +68,16 @@ export function accountBlock({ googleEmail, loginEmail, googleStatus, smsReady }
   const lines = [];
   if (own) {
     lines.push(
-      `- Rama's own email: ${own}. "Email myself", "send it to me", "my address" → use this; never ask for it.`
+      `- ${OWNER_NAME}'s own email: ${own}. "Email myself", "send it to me", "my address" → use this; never ask for it.`
     );
   }
   if (loginEmail && googleEmail && loginEmail.toLowerCase() !== googleEmail.toLowerCase()) {
-    lines.push(`- Rama signs in to Nexus as ${loginEmail}; Gmail and Calendar use ${googleEmail}.`);
+    lines.push(`- ${OWNER_NAME} signs in to Nexus as ${loginEmail}; Gmail and Calendar use ${googleEmail}.`);
   }
   lines.push(
     googleStatus === 'connected'
       ? `- Google (Gmail + Calendar) is connected${googleEmail ? ` as ${googleEmail}` : ''}.`
-      : `- Google is ${googleStatus === 'broken' ? 'disconnected (expired)' : 'not connected'}: Gmail and Calendar tools will fail — tell Rama to connect on the Calendar page.`
+      : `- Google is ${googleStatus === 'broken' ? 'disconnected (expired)' : 'not connected'}: Gmail and Calendar tools will fail — tell ${OWNER_NAME} to connect on the Calendar page.`
   );
   lines.push(
     smsReady

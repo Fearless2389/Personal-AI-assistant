@@ -15,13 +15,14 @@ import { generateStructured } from '../gemini.js';
 import * as calendarService from '../calendarService.js';
 import { DEFAULT_TZ, dayRangeUtc, hourInTz, formatInTz } from '../time.js';
 import { ACTIVE_STAGES } from '../applicationService.js';
+import { OWNER_NAME } from '../owner.js';
 
 // Strict JSON contract the model must return. Same OBJECT/STRING/ARRAY vocabulary
 // as the tool declarations in gemini.js.
 const BRIEFING_SCHEMA = {
   type: 'OBJECT',
   properties: {
-    greeting: { type: 'STRING', description: 'e.g. "Good morning, Rama"' },
+    greeting: { type: 'STRING', description: `e.g. "Good morning, ${OWNER_NAME}"` },
     headline: { type: 'STRING', description: 'One-line read on the shape of the day.' },
     priorities: {
       type: 'ARRAY',
@@ -50,17 +51,11 @@ function partOfDay(hour) {
   return 'evening';
 }
 
-function firstNameFromEmail(email) {
-  if (!email) return null;
-  const raw = email.split('@')[0].split(/[._-]/)[0];
-  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : null;
-}
-
 /**
  * Pull everything the briefing reasons over. Calendar is best-effort — if the
  * user hasn't connected Google (or it's broken/rate-limited) we just get [].
  */
-async function gather(userId, email, tz = DEFAULT_TZ) {
+async function gather(userId, tz = DEFAULT_TZ) {
   const now = new Date();
   const { end: endToday } = dayRangeUtc(tz, now); // user-local end-of-day, as a UTC instant
 
@@ -101,7 +96,7 @@ async function gather(userId, email, tz = DEFAULT_TZ) {
   return {
     now,
     tz,
-    userName: firstNameFromEmail(email),
+    userName: OWNER_NAME,
     part: partOfDay(hourInTz(tz, now)),
     events,
     tasks,
@@ -196,7 +191,7 @@ function fallbackBriefing(ctx) {
  * Run the workflow. Returns { briefing, generated, stats, events, generatedAt }.
  * `generated` is false when we served the deterministic fallback.
  */
-export async function runMorningBriefing(userId, { email, tz, force = false } = {}) {
+export async function runMorningBriefing(userId, { tz, force = false } = {}) {
   if (!force) {
     const hit = cache.get(userId);
     if (hit && Date.now() - hit.at < TTL_MS) return hit.payload;
@@ -209,7 +204,7 @@ export async function runMorningBriefing(userId, { email, tz, force = false } = 
     resolvedTz = s?.timezone || DEFAULT_TZ;
   }
 
-  const ctx = await gather(userId, email, resolvedTz);
+  const ctx = await gather(userId, resolvedTz);
 
   let briefing;
   let generated = false;

@@ -10,6 +10,7 @@ import { voiceApi } from '../api.js';
 import { MicCapture, PcmPlayer } from './audio.js';
 import { LiveSession } from './liveSession.js';
 import { applyToolResult, resolveByTap, resolveBySpeech, cancelAllWaiting, waitingIds } from '../confirmations.js';
+import { OWNER_NAME } from '../owner.js';
 
 // Close the socket and release the mic after this long without talking, so the
 // browser's recording indicator doesn't stay on and the free quota isn't held open.
@@ -235,7 +236,7 @@ export async function confirmByTap(id, decision) {
   const outcome = res.error ? `${res.status} (${res.error})` : res.status;
   tellModel(
     decision === 'confirm' ? 'Tapped Confirm' : 'Tapped Cancel',
-    `[Rama tapped ${decision === 'confirm' ? 'Confirm' : 'Cancel'} for: ${res.summary}. Outcome: ${outcome}. ` +
+    `[${OWNER_NAME} tapped ${decision === 'confirm' ? 'Confirm' : 'Cancel'} for: ${res.summary}. Outcome: ${outcome}. ` +
       'Acknowledge it in one short sentence. Do not call resolve_pending_action for this one.]'
   );
 }
@@ -369,7 +370,7 @@ async function backstopSpokenAnswer(turnId) {
   const outcome = res.error ? `${res.status} (${res.error})` : res.status;
   tellModel(
     'Applied your spoken answer',
-    `[Rama's spoken answer "${heard}" was applied to: ${res.summary}. Outcome: ${outcome}. ` +
+    `[${OWNER_NAME}'s spoken answer "${heard}" was applied to: ${res.summary}. Outcome: ${outcome}. ` +
       'Tell them in one short sentence. Do not call resolve_pending_action for this one.]'
   );
 }

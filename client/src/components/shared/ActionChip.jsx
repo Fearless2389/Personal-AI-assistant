@@ -1,7 +1,7 @@
 // One confirmation chip for something Nexus did ("Tracking Uber · OA · Fri 6 PM").
 // Used by the ⌘K capture bar and the voice panel. Clickable when there's a page to
 // open for it (or a website, for open_website); failures render in the danger tone.
-// Changes to Rama's own data get an Undo button beside the chip.
+// Changes to Ruthvik's own data get an Undo button beside the chip.
 import { summarizeTool, chipTarget } from '../../lib/toolSummary.js';
 import { UndoButton } from './UndoButton.jsx';
 import { cn } from '../../lib/utils.js';

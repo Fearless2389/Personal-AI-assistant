@@ -10,7 +10,7 @@
     "test": "node --test \"services/*.test.js\"",
     "hotkey": "powershell -NoProfile -ExecutionPolicy Bypass -File ../tools/hotkey/nexus-hotkey.ps1"
   },
-  "author": "Rama",
+  "author": "Ruthvik",
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {

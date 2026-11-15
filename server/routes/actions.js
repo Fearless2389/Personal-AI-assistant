@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { resolvePending, cancelAllPending, listRecentActions } from '../services/actionGate.js';
+import { resolvePending, cancelAllPending, listRecentActions, undoAction } from '../services/actionGate.js';
 import { loadUserTz } from '../services/assistantContext.js';
 
 // The action log and the on-screen side of the confirmation gate.
@@ -38,6 +38,16 @@ router.post('/:id/resolve', requireAuth, async (req, res, next) => {
       tz: await loadUserTz(req.user.id)
     });
     res.json({ result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** POST /api/actions/:id/undo → { result } — reverse an action Nexus took on your own data (once). */
+router.post('/:id/undo', requireAuth, async (req, res, next) => {
+  if (!UUID.test(req.params.id)) return res.status(400).json({ error: 'Invalid action id' });
+  try {
+    res.json({ result: await undoAction(req.user.id, { id: req.params.id }) });
   } catch (err) {
     next(err);
   }

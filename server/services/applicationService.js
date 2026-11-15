@@ -3,6 +3,7 @@
 // one implementation of stage rules, history and company matching.
 import { supabaseAdmin } from './supabase.js';
 import { snapshotRow, restoreStep, deleteStep } from './undo.js';
+import { OWNER_NAME } from './owner.js';
 
 export const STAGES = ['wishlist', 'applied', 'oa', 'interview', 'offer', 'rejected', 'withdrawn'];
 export const ACTIVE_STAGES = ['wishlist', 'applied', 'oa', 'interview', 'offer'];
@@ -185,7 +186,7 @@ export async function trackApplication(userId, args = {}) {
     return {
       ok: false,
       ambiguous: true,
-      message: `Rama has ${matches.length} ${company} applications — ask which role.`,
+      message: `${OWNER_NAME} has ${matches.length} ${company} applications — ask which role.`,
       candidates: matches.map((m) => ({
         id: m.id,
         role: m.role,

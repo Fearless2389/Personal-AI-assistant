@@ -9,7 +9,7 @@ test("the assistant is told the user's own address and to never ask for it", () 
     googleStatus: 'connected',
     smsReady: false
   });
-  assert.match(block, /Rama's own email: me@gmail\.com\. "Email myself"/);
+  assert.match(block, /Ruthvik's own email: me@gmail\.com\. "Email myself"/);
   assert.match(block, /never ask for it/);
   assert.match(block, /connected as me@gmail\.com/);
   assert.ok(!/signs in to Nexus as/.test(block), 'same account: no second line');

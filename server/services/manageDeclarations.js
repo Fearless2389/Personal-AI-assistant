@@ -2,6 +2,7 @@
 // shared confirmation tool. Kept apart from gemini.js so each section's contract
 // is readable on its own. Items are named the way the user says them; the server
 // resolves the name, so never invent ids.
+import { OWNER_NAME } from './owner.js';
 
 const action = (values, description) => ({ type: 'STRING', enum: values, description });
 const name = (what) => ({ type: 'STRING', description: `The ${what} as the user names it (partial is fine).` });
@@ -109,7 +110,7 @@ export const MANAGE_DECLARATIONS = [
   {
     name: 'undo_action',
     description:
-      'Reverse something Nexus did to Rama\'s own data ("undo that", "take that back", "I didn\'t mean that"): ' +
+      `Reverse something Nexus did to ${OWNER_NAME}\'s own data ("undo that", "take that back", "I didn\'t mean that"): ` +
       'removes a task, note, habit, goal, milestone or application it created, puts back an edit or a deleted item, ' +
       'un-checks a habit, brings back a cancelled reminder. Default: the newest action. Calendar changes, emails and ' +
       'opened websites cannot be undone. Call it again to undo the one before.',

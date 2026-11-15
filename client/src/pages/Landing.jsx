@@ -246,7 +246,7 @@ export default function Landing() {
         </section>
 
         <footer className="mt-16 flex items-center justify-between text-xs text-text-muted">
-          <span>Built solo by Rama · Mahindra University</span>
+          <span>Built solo by Ruthvik · Mahindra University</span>
           <span>Nexus · v1.0</span>
         </footer>
       </div>

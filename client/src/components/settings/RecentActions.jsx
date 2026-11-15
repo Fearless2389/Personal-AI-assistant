@@ -1,5 +1,6 @@
 // "What has Nexus done for me?" — the newest action_log rows (voice and chat):
-// what ran, what is waiting for your OK, what was cancelled or failed.
+// what ran, what is waiting for your OK, what was cancelled or failed. Changes to your
+// own data can be undone from here.
 import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Mic, MessageSquare } from 'lucide-react';
@@ -7,6 +8,7 @@ import { actionsApi } from '../../lib/api.js';
 import { actionStatusMeta } from '../../lib/actionStatus.js';
 import { Badge } from '../ui/Badge.jsx';
 import { LoadingSpinner } from '../shared/LoadingSpinner.jsx';
+import { UndoButton } from '../shared/UndoButton.jsx';
 
 const LIMIT = 15;
 const SOURCE_ICON = { voice: Mic, chat: MessageSquare };
@@ -28,6 +30,9 @@ export function RecentActions() {
       alive = false;
     };
   }, []);
+
+  const markUndone = (id) =>
+    setActions((rows) => rows.map((r) => (r.id === id ? { ...r, status: 'undone', undoable: false } : r)));
 
   if (error) return <p className="text-sm text-danger">Couldn&rsquo;t load the action log: {error}</p>;
   if (!actions) {
@@ -56,6 +61,7 @@ export function RecentActions() {
                 {a.utterance && <> · &ldquo;{a.utterance}&rdquo;</>}
               </p>
             </div>
+            {a.undoable && <UndoButton actionId={a.id} onUndone={markUndone} />}
             <Badge intent={meta.intent} className="shrink-0">
               {meta.label}
             </Badge>

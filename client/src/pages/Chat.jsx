@@ -14,6 +14,7 @@ import { formatRelative } from '../lib/utils.js';
 import { ConfirmCard } from '../components/shared/ConfirmCard.jsx';
 import { useConfirmStore } from '../store/useConfirmStore.js';
 import { isWaiting } from '../lib/confirmations.js';
+import { OWNER_NAME } from '../lib/owner.js';
 
 const SUGGESTIONS = [
   'Applied to Atlassian SWE intern off-campus, referral from Priya',
@@ -94,7 +95,7 @@ export default function Chat() {
                   N
                 </div>
                 <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-3">
-                  How can I help, Rama?
+                  How can I help, {OWNER_NAME}?
                 </h2>
                 <p className="text-text-secondary mb-8">
                   Capture a thought, plan your day, or ask what you told me before — I'll route it to the right place.

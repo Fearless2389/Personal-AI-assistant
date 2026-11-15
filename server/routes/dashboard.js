@@ -15,7 +15,7 @@ router.use(requireAuth);
 router.get('/', async (req, res) => {
   try {
     const force = req.query.refresh === '1' || req.query.refresh === 'true';
-    const payload = await runMorningBriefing(req.user.id, { email: req.user.email, force });
+    const payload = await runMorningBriefing(req.user.id, { force });
     res.json(payload);
   } catch (err) {
     console.error(`[dashboard:${req.id}] briefing failed:`, err.message);
