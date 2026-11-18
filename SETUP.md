@@ -101,6 +101,7 @@ Optional:
 ```
 TAVILY_API_KEY=...               # real web search (free ~1,000/month at tavily.com); without it, Wikipedia only
 HOTKEY_SECRET=...                # any long random value; enables the global Ctrl+Alt+Space tray helper
+OWNER_CONTEXT="..."              # your situation in a sentence or two (job, studies, focus); the assistant assumes it
 GEMINI_CHAT_MODEL=gemini-flash-latest              # chat model (default)
 GEMINI_CHAT_FALLBACK_MODEL=gemini-flash-lite-latest # used when the first one hangs or is overloaded
 ```

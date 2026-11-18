@@ -1,7 +1,7 @@
 import { getEmbedding } from './gemini.js';
 import { accountBlock } from './accountProfile.js';
 import { supabaseAdmin } from './supabase.js';
-import { OWNER_NAME } from './owner.js';
+import { OWNER_NAME, OWNER_CONTEXT } from './owner.js';
 
 /**
  * Embed `content` and persist the vector to the given row.
@@ -118,7 +118,7 @@ ${upcomingLines}
 Habits still open today:
 ${habitsLines}
 
-${OWNER_NAME} is in placement season (on-campus drives + off-campus applications). Treat that as the default context.
+${OWNER_CONTEXT} Treat that as the default context.
 
 HOW YOU ACT (tools)
 - Anything about a job/internship/placement application — applied, OA received, interview scheduled, offer, rejection, or a company's deadline — call track_application. It updates the existing card if there is one, so use it for every status change. Put the dated next thing in next_step + next_deadline. Do NOT also create a task for it.

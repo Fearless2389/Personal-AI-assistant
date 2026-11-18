@@ -15,7 +15,7 @@ import { generateStructured } from '../gemini.js';
 import * as calendarService from '../calendarService.js';
 import { DEFAULT_TZ, dayRangeUtc, hourInTz, formatInTz } from '../time.js';
 import { ACTIVE_STAGES } from '../applicationService.js';
-import { OWNER_NAME } from '../owner.js';
+import { OWNER_NAME, OWNER_CONTEXT } from '../owner.js';
 
 // Strict JSON contract the model must return. Same OBJECT/STRING/ARRAY vocabulary
 // as the tool declarations in gemini.js.
@@ -210,8 +210,9 @@ export async function runMorningBriefing(userId, { tz, force = false } = {}) {
   let generated = false;
   try {
     const system = `You are Nexus, ${ctx.userName ?? 'the user'}'s personal AI second brain.
-Write a short, energizing ${ctx.part} briefing grounded in their REAL tasks, placement deadlines and events below.
-They are in placement season: an OA or interview in the next 48h almost always outranks routine tasks.
+Write a short, energizing ${ctx.part} briefing grounded in their REAL tasks, application deadlines and events below.
+${OWNER_CONTEXT}
+An interview, test or deadline in the next 48h usually outranks routine tasks.
 Reference specifics — don't be generic. Choose the 3 things that actually matter most today.
 Warm but concise. No filler, no motivational-poster clichés.`;
     const parsed = JSON.parse(await generateStructured(system, BRIEFING_SCHEMA, renderContext(ctx)));
