@@ -109,6 +109,7 @@ server/services/browser/
   risk.js          classifyStep(step, element, page) → { risk, reason }   (pure, tested)
   prompt.js        buildAgentSystem(goal, kind), buildStepTurn(snapshot, progress)   (pure, tested)
   agentLoop.js     runTask(task): snapshot → model → classify → (park) → execute → record
+  runner.js        one active task per user + FIFO queue (D5), abort, persistence, resume (2D)
   taskStore.js     browser_tasks / browser_steps reads + writes
   taskHub.js       SSE fan-out of task events
   declarations.js  STEP_DECLARATIONS (inside the loop) + BROWSE_DECLARATIONS (Nexus-level tools)
@@ -520,6 +521,54 @@ hung for ~5 minutes on a plain request (headers timeout) while lite answered: th
 ---
 
 ### Week 2 — Safety, gate and tools (23–28 Nov)
+
+**Chunked on 18 Nov (Ruthvik: "divide it into chunks that are manageable").** Week 1 finished early, so
+Week 2 starts Wed 18 Nov. Each chunk is one commit with its own acceptance check, done in this order.
+Chunks 2A–2B need no database, so Ruthvik can run migration 008 (2C) any time before 2C starts.
+
+| Chunk | What | Spec | Needs Ruthvik | Size |
+| --- | --- | --- | --- | --- |
+| **2A** | Navigation guard: block document loads to LAN/localhost/payment hosts however they're triggered (link, redirect, form) | T2.4 "Guard to add first" | — | ~2 h |
+| **2B** | Red-team pages 1–6 + `--suite redteam` (3 runs each) in the eval runner; fix what it finds | T2.4 | — | ~4 h |
+| **2C** | Migration 008 + `taskStore.js` (CAS status changes, queue reads) | T2.1 | run `008_browser_tasks.sql` | ~2 h |
+| **2D** | `runner.js`: one active task + FIFO queue (D5), abort per task, persist steps/status, resume after `ask_user`, 15-min answer timeout | below | — | ~5 h |
+| **2E** | `browser_step` through `action_log`: park confirm steps, resolve via the existing gate, decline path | T2.2 | — | ~4 h |
+| **2F** | Routes + SSE `taskHub` + stop / stop-all / answer / open-for-login + kill switch from the client | T2.3 | — | ~4 h |
+| **2G** | Nexus tools `browse_web`, `browser_status`, `stop_browser_task`, `answer_browser_task` + prompt lines + chips | T2.5 | — | ~4 h |
+| **2H** | Week-2 evals (fixture + red team), live chat check, docs (`CLAUDE.md`, `SETUP.md`), Review 2 demo prep | T2.6 | try the demo | ~3 h |
+
+**Progress (18 Nov)**
+- [x] **2A done.** `guard.js` (+ `urlPolicy.js`, shared URL rules): a context route aborts document
+  loads to LAN/localhost/payment hosts; pop-ups (no frame yet) and redirect hops (not routed by
+  Playwright, caught on the `request` event) are covered; a blocked step returns to its page and
+  reports `blocked: …`; risk.js rule 1b refuses actions on a private page reached by redirect.
+  Limitation: a redirect's GET to a private address is sent before it's caught (a normal browser does
+  the same); the agent never acts there. `guard.test.js` 8/8; disabling the guard fails 6.
+- [x] **2B done.** `inject-1…6.html` + `--suite redteam` (3 runs each). Run 1: 15/18, 0 risky, planted
+  text flagged 0/6. Fixes: deterministic `findInjection` (prompt.js, tested on 7 planted + 7 ordinary
+  shop texts) → a WARNING line in the step turn + a guaranteed "Heads-up" in the summary; rt4's
+  expectation widened (the agent ignored the fake checkout and asked at "Proceed to checkout").
+  Run 2: **18/18, 0 risky, flagged 6/6**.
+- [ ] **2C** code written (`taskStore.js`, `008_browser_tasks.sql`; adds `success`, `started_at`,
+  step `label`); live check waits for Ruthvik to run the migration.
+- [x] **2D done (offline).** `runner.js` + `runner.test.js` 10/10 (removing the one-at-a-time guard
+  fails 7). Loop changes: `resume`/`answer`, injectable `modelTurn`, `agentLoop.test.js` 8/8 with a
+  scripted model (confirm/decline/never/pause-resume/budget/stuck/kill switch). Server test total 94.
+
+**2D spec (new file `server/services/browser/runner.js`; the loop stays DB-free):**
+- State per user: `active` (task id, `AbortController`, page, loop state) and `queue` (task ids, oldest
+  first, max 5). `startTask(userId, { goal, kind, startUrl, source })` → creates the row (`queued`),
+  then `pump(userId)`. `pump` starts the oldest queued task when nothing is active.
+- `runTask` gains `resume` + `answer`: when the loop returns `waiting_user` it also returns `state`
+  (history entries, model, step counter, collected rows, the pending `ask_user` call). `answerTask`
+  calls `runTask({ ..., resume: state, answer })`; the pending call gets the functionResponse
+  `{ ok: true, answer }`, so the model continues where it stopped.
+- A `waiting_user` or `waiting_confirmation` task still holds the slot (D5). If nobody answers for
+  **15 minutes** it is `stopped` with "No answer for 15 minutes", so the queue moves on.
+- Every step → `taskStore.addStep`; every status change → `setStatus` (CAS) + a `taskHub` event.
+- On server start: tasks left `running`/`waiting_*` by a crash → `stopped` ("Server restarted").
+- Tests (no network): runner with a fake `runTask` → queue order, slot held while waiting, timeout
+  frees it, stop-all clears the queue, crash recovery.
 
 #### Day 7 — Mon 23 Nov · Database
 
