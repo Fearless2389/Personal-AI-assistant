@@ -1,4 +1,4 @@
-// Global push-to-talk bridge: the tray helper's Ctrl+Alt+Space presses arrive
+// Global push-to-talk bridge: the tray helper's Alt+Space presses arrive
 // over GET /api/hotkey/events and drive the voice engine, even when Nexus is in a
 // background tab. Exactly one tab listens (Web Locks), so two open tabs never both
 // open the mic. A lost key-up can't leave the mic on: a hold auto-releases.

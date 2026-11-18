@@ -1,4 +1,4 @@
-// Voice mode entry point in the top bar. Hold the orb (or Ctrl+Alt+Space anywhere
+// Voice mode entry point in the top bar. Hold the orb (or Alt+Space anywhere
 // in Nexus) to talk; release to send. A quick click opens the transcript panel and
 // connects ahead of time so the first press doesn't wait on setup.
 import { useEffect, useRef } from 'react';
@@ -8,10 +8,10 @@ import { pressStart, pressEnd, warmUp, shutdown, stopAll } from '../../lib/voice
 import { hasWaiting } from '../../lib/confirmations.js';
 import { startHotkeyBridge } from '../../lib/voice/hotkeyBridge.js';
 import { cn } from '../../lib/utils.js';
+import { HOTKEY_HINT, isHotkey, endsHotkey } from '../../lib/voice/hotkey.js';
 import { VoicePanel } from './VoicePanel.jsx';
 
 const HOLD_MS = 220; // shorter than this is a click, not push-to-talk
-const isHotkey = (e) => e.code === 'Space' && e.ctrlKey && e.altKey;
 
 const LOOK = {
   off: 'border-surface-border bg-surface-2/70 text-text-muted hover:text-text-secondary hover:border-nexus-primary/45',
@@ -30,8 +30,9 @@ export function VoiceOrb() {
   const wrapRef = useRef(null);
   const hold = useRef({ timer: null, held: false, suppressClick: false });
 
-  // In-app push-to-talk shortcut. With the tray helper running, Windows hands the key
-  // to the helper instead and the press arrives through the hotkey bridge.
+  // In-app push-to-talk shortcut. With the tray helper running, Windows hands the key to the
+  // helper and the press arrives through the hotkey bridge; on Windows a page alone never gets
+  // Alt+Space (the window menu takes it), so this only matters on systems that pass it through.
   useEffect(() => {
     let keyHeld = false;
     const release = () => {
@@ -47,7 +48,7 @@ export function VoiceOrb() {
       pressStart();
     };
     const onUp = (e) => {
-      if (e.code === 'Space' || e.key === 'Control' || e.key === 'Alt') release();
+      if (endsHotkey(e)) release();
     };
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
@@ -128,7 +129,7 @@ export function VoiceOrb() {
         onContextMenu={(e) => e.preventDefault()}
         aria-label="Voice: hold to talk, click for transcript"
         aria-expanded={panelOpen}
-        title="Hold to talk (Ctrl+Alt+Space)"
+        title={`Hold to talk (or ${HOTKEY_HINT})`}
         className={cn(
           'relative w-9 h-9 rounded-full border grid place-items-center transition-colors select-none touch-none',
           LOOK[status] ?? LOOK.off

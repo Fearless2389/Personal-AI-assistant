@@ -8,6 +8,7 @@ import { isWaiting, isShownAction } from '../../lib/confirmations.js';
 import { useConfirmStore } from '../../store/useConfirmStore.js';
 import { ActionItem } from '../shared/ActionItem.jsx';
 import { cn } from '../../lib/utils.js';
+import { HOTKEY_HINT } from '../../lib/voice/hotkey.js';
 
 const LABEL = {
   off: 'Voice is off',
@@ -70,7 +71,7 @@ export function VoicePanel({ onClose }) {
       <div ref={listRef} className="max-h-[55vh] overflow-y-auto px-3 py-3 space-y-4">
         {turns.length === 0 ? (
           <p className="text-sm text-text-secondary">
-            Hold the mic (or Ctrl+Alt+Space) and talk. Try &ldquo;what&rsquo;s due this week?&rdquo; or &ldquo;got the
+            Hold the mic (or {HOTKEY_HINT}) and talk. Try &ldquo;what&rsquo;s due this week?&rdquo; or &ldquo;got the
             Amazon OA, due Sunday 9 PM&rdquo;.
           </p>
         ) : (

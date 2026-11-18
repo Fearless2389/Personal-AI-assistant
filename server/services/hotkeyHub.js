@@ -1,5 +1,5 @@
 // Global push-to-talk: the tray helper (tools/hotkey/nexus-hotkey.ps1) reports
-// Ctrl+Alt+Space down/up; this hub fans that out to the listening Nexus tab over a
+// Alt+Space down/up; this hub fans that out to the listening Nexus tab over a
 // server-sent-event stream. Only this machine may press (loopback + shared secret),
 // because a press opens the microphone. isLoopback / secretMatches are pure
 // (hotkeyHub.test.js).
