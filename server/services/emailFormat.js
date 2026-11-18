@@ -78,10 +78,16 @@ export function extractBody(payload) {
 }
 
 /**
- * Third-party text on its way to the model: drop invisible characters (zero-width,
- * bidi overrides — used to hide instructions) and cap the length.
+ * Invisible characters used to hide instructions in third-party text: zero-width, bidi
+ * overrides and isolates, BOM. Global flag: use it with .replace only (also used by the
+ * browser agent's page snapshot).
+ */
+export const INVISIBLE_CHARS = /[\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/g;
+
+/**
+ * Third-party text on its way to the model: drop invisible characters and cap the length.
  */
 export function asUntrusted(text, max = 6000) {
-  const clean = String(text ?? '').replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]/g, '');
+  const clean = String(text ?? '').replace(INVISIBLE_CHARS, '');
   return clean.length > max ? `${clean.slice(0, max)}\n…[truncated]` : clean;
 }
