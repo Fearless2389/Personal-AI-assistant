@@ -29,6 +29,7 @@ Supabase and Google Cloud consoles.
    - `supabase/migrations/005_applications_and_nudges.sql` — placement tracker + nudge snoozes
    - `supabase/migrations/006_action_log.sql` — what Nexus did + the confirmation gate
    - `supabase/migrations/007_action_undo.sql` — undo for actions on your own data
+   - `supabase/migrations/008_browser_tasks.sql` — browser-agent tasks and steps (only needed for the browser agent)
 
    > **Free-tier gotcha:** Supabase pauses a project after ~7 days with no activity. If the app
    > suddenly can't log in and the server logs `fetch failed`, open the dashboard and click
@@ -105,6 +106,23 @@ OWNER_CONTEXT="..."              # your situation in a sentence or two (job, stu
 GEMINI_CHAT_MODEL=gemini-flash-latest              # chat model (default)
 GEMINI_CHAT_FALLBACK_MODEL=gemini-flash-lite-latest # used when the first one hangs or is overloaded
 ```
+
+Browser agent (optional, in development: see `PLAN.md`). Nexus drives its own Chromium window
+(separate profile in `server/.agent-profile`, gitignored) to do web errands, asking before anything that
+buys, submits, sends or books. Needs migration 008 and, once, `cd server; npx playwright-core install chromium`.
+
+```
+BROWSER_AGENT_ENABLED=1          # adds /api/browser + the browse_web / browser_status / stop / answer tools
+BROWSER_HEADLESS=0               # 1 hides the agent window (evals); 0 lets you watch it
+BROWSER_STEP_INTERVAL_MS=5000    # pause between model calls (free-tier rate limits)
+BROWSER_AGENT_MODEL=             # optional model to try first for the agent (default: the chat models)
+BROWSER_PROFILE_DIR=             # optional; default server/.agent-profile
+# BROWSER_AGENT_ALLOW_ORIGINS=http://127.0.0.1:3999   # TESTING ONLY: lets the agent open the local fixture site
+```
+
+Try it without the app: `cd server; npm run agent -- "Find the cheapest laptop and add it to the cart" --start http://127.0.0.1:3999/`
+(starts the fixture shop itself). Evals: `npm run agent:eval` and `npm run agent:eval -- --suite redteam`
+(results in `docs/agent-evals.md`). Sign in to a site by hand in the agent window: Nexus never types passwords.
 
 Global push-to-talk (Windows): with the server running, `cd server; npm run hotkey`. A tray icon
 appears; hold Ctrl+Alt+Space anywhere to talk to the open Nexus tab (click the tab once after

@@ -15,7 +15,7 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
 
 ## Key patterns
 
-- **Tools** (26) live in one dispatcher shared by chat and voice: `server/services/tools.js` →
+- **Tools** (26, +4 browser tools when `BROWSER_AGENT_ENABLED=1`) live in one dispatcher shared by chat and voice: `server/services/tools.js` →
   `handleToolCall`, which routes to small handler modules. Declarations: `services/gemini.js` (core),
   `manageDeclarations.js`, `googleDeclarations.js`.
   - Core: create_note, create_task, create_calendar_event, schedule_reminder, search_memory,
@@ -76,6 +76,22 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
   `POST /api/hotkey/:dir` (loopback + `HOTKEY_SECRET`) → SSE `GET /api/hotkey/events` → `lib/voice/hotkeyBridge.js`
   (one tab via Web Locks). Live API gotchas (REST token field is `bidiGenerateContentSetup`,
   a tool call ends its own silent turn): `spikes/live-voice/FINDINGS.md`.
+- **Browser agent** (`services/browser/`, plan + decisions in `PLAN.md`, off unless `BROWSER_AGENT_ENABLED=1`):
+  Nexus drives its own Chromium (Playwright, persistent profile `server/.agent-profile`, `driver.js`).
+  Loop (`agentLoop.js#runTask`, DB-free, model call injectable for tests): `snapshot.js` turns the page into
+  numbered visible elements + text (hidden content dropped, `data-nexus-ref` on the page) → the model makes
+  ONE step call (`declarations.js`, forced function calling) → `risk.js#classifyStep` (pure, tested table):
+  `never` (passwords/card/OTP fields, payment hosts, private URLs) / `confirm` (buy, submit, send, book,
+  sign up, unapproved personal data) / `safe` → `actions.js#runAction`. `guard.js` aborts document loads to
+  LAN/localhost/payment hosts however triggered (links, pop-ups, redirects, forms). `prompt.js#findInjection`
+  flags text aimed at an AI; the summary always reports it. `runner.js`: one task per user, FIFO queue (max 5),
+  stop/stop-all, `ask_user` pause → `answerTask` resume, 15-min answer timeout, crash recovery; persists via
+  `taskStore.js` (migration 008), events via `taskHub.js` (SSE `GET /api/browser/events`). Confirm steps go
+  through the normal gate (`confirm.js`): parked as `action_log` tool `browser_step`; only a step the loop is
+  still waiting on can run. Client: `lib/browserBridge.js` turns `needs_confirmation` events into ConfirmCards
+  (shown in Chat); Esc/`engine.stopAll` also calls `POST /api/browser/stop-all`. Nexus tools in `nexusTools.js`
+  (light file; the runner loads lazily). Evals: `npm run agent:eval [-- --suite redteam]` on the fixture site
+  (`server/test/fixtures/agent-site`), results appended to `docs/agent-evals.md`.
 - **Dates are answered by query, not vectors.** `services/agenda.js` (`listUpcoming`) merges tasks,
   application next-steps and events; it feeds the chat system prompt, `list_upcoming` and the Today
   timeline. Placement deadlines live on `applications.next_deadline` — never duplicate them as tasks.

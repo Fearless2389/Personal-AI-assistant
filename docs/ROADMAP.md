@@ -134,11 +134,11 @@ extend to local Windows apps (section 6).
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Agent-controlled browser with your logins | next | A dedicated Chromium profile driven locally (Playwright/CDP), so sessions persist and your daily browser is untouched. |
-| See → decide → act loop | next | Page screenshot + accessibility tree → Gemini picks an action (navigate, click, type, scroll, read) → repeat. Live step feed + screenshots in the voice panel. |
-| Gate every browser action by risk | next | Read/navigate = safe; submit, send, pay, delete, change password, accept/decline offer = confirm; banking/trading transfers and password-manager exports = never. Reuses `actionPolicy.js` + `action_log`. |
-| Prompt-injection guard for pages | next | Page text is data, never instructions; a page can't widen what the agent may do. |
-| Kill switch + step budget | next | Esc stops the browser mid-task; max steps per task; every step logged with a screenshot. |
+| Agent-controlled browser with your logins | building | Own Chromium profile via Playwright (Week 1 done). Plan: `PLAN.md`. |
+| See → decide → act loop | building | Text snapshot of the page (no screenshots to the model: the Computer Use model has no free quota) → one Gemini step → repeat. Fixture evals 12/12. Live step feed + screenshots: Week 3. |
+| Gate every browser action by risk | building | `risk.js` (safe / confirm / never) + navigation guard; risky steps wait for a yes through `action_log` (Week 2). |
+| Prompt-injection guard for pages | building | Hidden text dropped, planted instructions flagged; red-team suite 18/18, 0 risky actions (Week 2). |
+| Kill switch + step budget | building | Esc stops tasks mid-step (even a hanging model call); 30 steps / 10 min / 3 failures per task; queue of 5. |
 | Placement portal flows | next | Watch for new drives, pre-fill application forms, stop before Submit for your yes. First real use case. |
 | Local apps (Alma-style, whole screen) | later | Only after the browser agent is reliable. Windows UI Automation + screen vision. |
 
@@ -190,6 +190,11 @@ extend to local Windows apps (section 6).
 - **2026-11-14** — Phase 1 (voice core) built: voice orb + transcript panel, locked-setup tokens,
   tools via the shared dispatcher, voice turns saved to memory. Also fixed model datetimes with no
   offset being stored as UTC (affected text chat too). Verified against live Supabase and pushed.
+- **2026-11-18** — Browser agent Weeks 1–2 (`PLAN.md`): engine (own Chromium, page snapshot, risk classifier,
+  step loop, fixture evals 12/12), navigation guard, red-team suite (18/18, 0 risky actions), task queue with
+  stop / answer-and-resume (migration 008), risky steps through the confirmation gate, `/api/browser` + SSE,
+  and `browse_web` / `browser_status` / `stop_browser_task` / `answer_browser_task` in chat and voice. Off unless
+  `BROWSER_AGENT_ENABLED=1`.
 - **2026-11-15** — Briefing out loud (`get_briefing`, Today speaker button) and undo for Nexus's changes
   to your own data (migration 007).
 - **2026-11-15** — `open_website`: "open YouTube" opens a new tab (public links only; asks first right after
