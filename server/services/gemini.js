@@ -243,6 +243,19 @@ export function getChatModel(systemInstruction, name = CHAT_MODELS[0]) {
   return genAI.getGenerativeModel({ model: name, systemInstruction, tools });
 }
 
+/**
+ * A model with its own tool set that MUST answer with a function call (mode ANY): the browser
+ * agent's step loop (services/browser/), where every turn is exactly one action.
+ */
+export function getModelWithTools(systemInstruction, functionDeclarations, name = CHAT_MODELS[0]) {
+  return genAI.getGenerativeModel({
+    model: name,
+    systemInstruction,
+    tools: [{ functionDeclarations }],
+    toolConfig: { functionCallingConfig: { mode: 'ANY' } }
+  });
+}
+
 /** Worth trying another model: a timeout, overload, quota or server error — not a bad request. */
 export function isModelUnavailable(err) {
   return (
@@ -257,13 +270,21 @@ export function isModelUnavailable(err) {
  * Stream the first turn of a chat request on the first healthy model, falling back
  * if a model is unavailable before it says anything. Returns the model that
  * answered: later rounds must reuse it (thought signatures are per model).
+ * `declarations` swaps the chat tools for another set (browser agent); `models` overrides the order.
  * → { model, name, turn }
  */
-export async function firstTurnWithFallback(systemInstruction, contents, onText) {
-  const healthy = CHAT_MODELS.filter((n) => (downUntil.get(n) ?? 0) <= Date.now());
+export async function firstTurnWithFallback(
+  systemInstruction,
+  contents,
+  onText = () => {},
+  { declarations = null, models = CHAT_MODELS } = {}
+) {
+  const healthy = models.filter((n) => (downUntil.get(n) ?? 0) <= Date.now());
   let lastErr;
-  for (const name of healthy.length ? healthy : CHAT_MODELS) {
-    const model = getChatModel(systemInstruction, name);
+  for (const name of healthy.length ? healthy : models) {
+    const model = declarations
+      ? getModelWithTools(systemInstruction, declarations, name)
+      : getChatModel(systemInstruction, name);
     let spoke = false;
     try {
       const turn = await streamTurn(model, contents, (t) => {
