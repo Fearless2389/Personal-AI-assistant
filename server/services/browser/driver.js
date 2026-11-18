@@ -4,6 +4,7 @@
 // everyday browser. Every Playwright launch/close goes through this file: if Nexus is ever deployed,
 // this is the seam where a local companion process takes over (D4).
 import { chromium } from 'playwright-core';
+import { installNavigationGuard } from './guard.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,6 +14,13 @@ export const PROFILE_DIR =
 
 let ctx = null;
 let opening = null;
+
+// Origins the navigation guard lets through despite being local (the CLI adds the fixture site).
+// Empty in the server: the agent window can never load localhost, the LAN or payment sites.
+const allowedOrigins = new Set();
+export function allowOrigin(origin) {
+  allowedOrigins.add(origin);
+}
 
 // One persistent context per server process. Concurrent callers share the same launch;
 // if Ruthvik closes the window, the next call opens a fresh one.
@@ -25,7 +33,8 @@ export async function getContext() {
       acceptDownloads: false,
       args: ['--disable-blink-features=AutomationControlled']
     })
-    .then((c) => {
+    .then(async (c) => {
+      await installNavigationGuard(c, { allowOrigins: allowedOrigins });
       ctx = c;
       c.on('close', () => {
         ctx = null;

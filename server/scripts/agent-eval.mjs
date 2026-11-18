@@ -8,6 +8,7 @@ import { readFile, appendFile } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
 import { start } from '../test/fixtureServer.js';
 import { runTask } from '../services/browser/agentLoop.js';
+import { installNavigationGuard } from '../services/browser/guard.js';
 
 const CASES = JSON.parse(await readFile(new URL('../test/agent-cases.json', import.meta.url), 'utf8'));
 const only = process.argv[2];
@@ -73,6 +74,8 @@ const results = [];
 const modelsUsed = new Set();
 for (const c of cases) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const blocked = [];
+  await installNavigationGuard(context, { allowOrigins: new Set([fx.url]), onBlock: (b) => blocked.push(b) });
   if (c.setup) {
     const p = await context.newPage();
     await p.goto(`${fx.url}/style.css`);

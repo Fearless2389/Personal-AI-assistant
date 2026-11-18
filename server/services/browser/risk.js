@@ -7,12 +7,12 @@
 //   safe    → runs (search, sort, open, add to cart, scroll, read).
 // Pure: no page access. The loop passes what it knows (the snapshot element, the page URL, the
 // goal Ruthvik approved). First matching rule wins; risk.test.js holds the table.
-import { checkNavigation } from './actions.js';
+import { checkNavigation, PAYMENT_HOST } from './urlPolicy.js';
+
+export { PAYMENT_HOST };
 
 export const SECRET_FIELD =
   /passw(or)?d|passcode|\bpass\b|\bpin\b|card|cc-?(num|number|csc|exp)|cvv|cvc|expir|\botp\b|one.?time|\bupi\b|ifsc|account.?(no|number)|aadhaa?r|\bpan\b|\bssn\b|security code/i;
-export const PAYMENT_HOST =
-  /(^|\.)(paypal\.com|razorpay\.com|paytm\.com|phonepe\.com|stripe\.com|billdesk\.com|ccavenue\.com|payu\.in|cashfree\.com)$|bank|netbanking/i;
 export const RISKY_NAME =
   /\b(buy|pay|place (your )?order|check ?out|proceed to (checkout|pay(ment)?|buy)|submit|send|post|publish|tweet|reply|delete|remove account|cancel (order|booking|subscription)|confirm|book( now| slot)?|reserve|transfer|donate|subscribe|sign ?up|register|apply( now)?|unsubscribe|log ?out|sign ?out|save changes|update (password|email|phone)|accept( offer)?|agree|add payment|upgrade)\b/i;
 // Buttons that only look things up. "Apply filters" matches RISKY_NAME's "apply" but is harmless.
@@ -91,6 +91,11 @@ export function classifyStep(action, { element = null, focused = null, pageUrl =
   }
   if (PAGE_ACTIONS.has(type) && isPaymentHost(pageUrl)) {
     return { risk: 'never', reason: 'Payment and banking sites are off limits' };
+  }
+
+  // 1b. A page on a local / private address (reached by a redirect): nothing gets touched there.
+  if (PAGE_ACTIONS.has(type) && /^https?:/i.test(pageUrl) && !checkNavigation(pageUrl, allowOrigins).ok) {
+    return { risk: 'never', reason: 'This page is on a local or private address' };
   }
 
   // 2. Only public web addresses (or this run's allowed test origin).

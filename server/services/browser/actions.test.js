@@ -55,7 +55,7 @@ test('search, sort, open the cheapest laptop, add it to the cart', async () => {
 test('a link that opens a new tab moves the task there and closes the old tab', async () => {
   const page = await context.newPage();
   await page.goto(`${fx.url}/index.html`);
-  const r = await runAction(page, { type: 'click', ref: await refOf(page, (e) => e.name === "Today's offers") });
+  const r = await runAction(page, { type: 'click', ref: await refOf(page, (e) => e.name === "Today's offers") }, { allowOrigins: [fx.url] });
   assert.equal(r.ok, true, r.error);
   assert.match(r.newUrl, /offers\.html$/);
   assert.notEqual(r.page, page);
@@ -66,19 +66,20 @@ test('a link that opens a new tab moves the task there and closes the old tab', 
 test('bad steps fail with a short reason instead of throwing', async () => {
   const page = await context.newPage();
   await page.goto(`${fx.url}/booking.html`);
-  let r = await runAction(page, { type: 'click', ref: 999 });
+  const allow = { allowOrigins: [fx.url] };
+  let r = await runAction(page, { type: 'click', ref: 999 }, allow);
   assert.equal(r.ok, false);
   assert.match(r.error, /ref 999 is not on the page/);
 
-  r = await runAction(page, { type: 'type', ref: await refOf(page, (e) => e.name === 'Date'), text: 'next friday' });
+  r = await runAction(page, { type: 'type', ref: await refOf(page, (e) => e.name === 'Date'), text: 'next friday' }, allow);
   assert.equal(r.ok, false);
   assert.match(r.error, /YYYY-MM-DD/);
   assert.doesNotMatch(r.error, /\n/);
 
-  r = await runAction(page, { type: 'navigate', url: 'http://192.168.1.1/' });
+  r = await runAction(page, { type: 'navigate', url: 'http://192.168.1.1/' }, allow);
   assert.deepEqual([r.ok, r.error], [false, 'Private network addresses are not allowed.']);
 
-  r = await runAction(page, { type: 'press', key: 'F12' });
+  r = await runAction(page, { type: 'press', key: 'F12' }, allow);
   assert.equal(r.ok, false);
   await page.close();
 });

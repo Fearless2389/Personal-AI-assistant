@@ -3,31 +3,16 @@
 // decides whether a step is allowed: risk.js classifies every step before agentLoop calls this.
 // runAction never throws; it returns { ok, error?, newUrl, page } where `page` is the tab the
 // task continues on (a link that opened a new tab moves the task there and closes the old one).
-import { checkUrl } from '../webFetch.js';
+import { checkNavigation } from './urlPolicy.js';
+import { takeBlock, documentVerdict } from './guard.js';
+
+export { checkNavigation };
 
 export const KEYS = ['Enter', 'Escape', 'Tab', 'PageDown', 'PageUp'];
 const ACTION_TIMEOUT_MS = 5000;
 const NAV_TIMEOUT_MS = 20000;
 const SETTLE_MS = 400;
 const SCROLL_PX = 700;
-
-/**
- * May the agent go to this URL by typing it? Public http(s) only (the same SSRF guard as
- * read_webpage), except origins explicitly allowed for the run (the local fixture site in tests,
- * evals and the CLI). Pure; also used by risk.js.
- */
-export function checkNavigation(raw, allowOrigins = []) {
-  let url;
-  try {
-    url = new URL(String(raw ?? '').trim());
-  } catch {
-    return { ok: false, reason: 'That is not a valid URL.' };
-  }
-  if (allowOrigins.includes(url.origin)) return { ok: true, url };
-  const checked = checkUrl(url.href);
-  if (!checked.ok) return { ok: false, reason: checked.reason.replace('can be read', 'can be opened') };
-  return checked;
-}
 
 // Playwright errors carry multi-line call logs; the model needs one short line.
 function shortError(err) {
@@ -106,6 +91,8 @@ export async function runAction(page, action, { allowOrigins = [] } = {}) {
     .context()
     .waitForEvent('page', { timeout: 1000 })
     .catch(() => null);
+  takeBlock(page); // forget blocks from before this step
+  const before = page.url();
   let result;
   try {
     result = await perform(page, action, allowOrigins);
@@ -115,15 +102,32 @@ export async function runAction(page, action, { allowOrigins = [] } = {}) {
 
   let current = page;
   const opened = await popup;
+  if (opened) await opened.waitForLoadState('domcontentloaded', { timeout: 8000 }).catch(() => {});
+  await page.waitForLoadState('domcontentloaded', { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(SETTLE_MS).catch(() => {}); // a click's navigation request lands a moment later
+  // The navigation guard refused a page this step tried to load (guard.js), here or in a new tab.
+  let block = takeBlock(page) ?? (opened ? takeBlock(opened) : null);
+  // Redirect hops aren't routed (Playwright), so a redirect can still land somewhere forbidden:
+  // the request went out, but the agent leaves at once and never acts there (risk.js refuses too).
+  if (!block && !page.isClosed() && /^https?:/.test(page.url())) {
+    const verdict = documentVerdict(page.url(), { allowOrigins });
+    if (!verdict.ok) block = { url: page.url(), reason: verdict.reason };
+  }
+  if (block) {
+    result = { ok: false, error: `blocked: ${block.reason} (${block.url.slice(0, 80)})` };
+    // An aborted load leaves Chrome's error page; go back to where the step started.
+    if (!page.isClosed() && page.url() !== before && /^https?:/.test(before)) {
+      await page.goto(before, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS }).catch(() => {});
+    }
+  }
+
   if (opened && result.ok) {
-    await opened.waitForLoadState('domcontentloaded', { timeout: 8000 }).catch(() => {});
     await page.close().catch(() => {});
     current = opened;
   } else if (opened) {
-    await opened.close().catch(() => {});
+    await opened.close().catch(() => {}); // blocked or failed: stay on the original tab
   }
-  if (!current.isClosed()) {
-    await current.waitForLoadState('domcontentloaded', { timeout: 8000 }).catch(() => {});
+  if (current !== page && !current.isClosed()) {
     await current.waitForTimeout(SETTLE_MS).catch(() => {});
   }
   return { ...result, newUrl: current.isClosed() ? null : current.url(), page: current };

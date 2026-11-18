@@ -5,7 +5,7 @@
 import readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import { runTask } from '../services/browser/agentLoop.js';
-import { newPage, closeBrowser } from '../services/browser/driver.js';
+import { newPage, closeBrowser, allowOrigin } from '../services/browser/driver.js';
 import { start as startFixtures } from '../test/fixtureServer.js';
 
 const argv = process.argv.slice(2);
@@ -31,6 +31,7 @@ if (!goal) {
 const fixturePort = Number(process.env.AGENT_FIXTURE_PORT) || 3999;
 const fixtureOrigin = `http://127.0.0.1:${fixturePort}`;
 let fixtures = null;
+allowOrigin(fixtureOrigin);
 if (startUrl?.startsWith(fixtureOrigin)) {
   fixtures = await startFixtures(fixturePort).catch(() => null); // already running → fine
 }

@@ -27,6 +27,12 @@ async function handle(req, res) {
     res.writeHead(400).end('Bad request');
     return;
   }
+  // /go?to=<url>: a redirect, so tests can check the navigation guard follows redirects.
+  if (pathname === '/go') {
+    const to = new URL(req.url, 'http://fixture').searchParams.get('to') || '/';
+    res.writeHead(302, { location: to }).end();
+    return;
+  }
   if (pathname.endsWith('/')) pathname += 'index.html';
   const file = path.normalize(path.join(ROOT, pathname));
   const type = TYPES[path.extname(file)];
