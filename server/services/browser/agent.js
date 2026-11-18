@@ -2,12 +2,19 @@
 // (chunk 2G). Off unless BROWSER_AGENT_ENABLED=1: then the routes and tools don't exist at all.
 import { createRunner } from './runner.js';
 import * as taskHub from './taskHub.js';
+import { testOrigins } from './urlPolicy.js';
+import { allowOrigin } from './driver.js';
 
 export const browserAgentEnabled = () => process.env.BROWSER_AGENT_ENABLED === '1';
 
 let runner = null;
 export function getRunner() {
-  runner ??= createRunner({ hub: taskHub });
+  if (!runner) {
+    const origins = testOrigins(); // testing only (BROWSER_AGENT_ALLOW_ORIGINS)
+    for (const o of origins) allowOrigin(o);
+    if (origins.length) console.warn(`[browser] TEST origins allowed: ${origins.join(', ')}`);
+    runner = createRunner({ hub: taskHub, allowOrigins: origins });
+  }
   return runner;
 }
 

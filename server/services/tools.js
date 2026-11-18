@@ -8,6 +8,7 @@ import { WEB_HANDLERS } from './webTools.js';
 import { UI_HANDLERS, prepareWebsite } from './uiTools.js';
 import { BRIEFING_HANDLERS } from './briefingTools.js';
 import { BROWSE_HANDLERS } from './browser/confirm.js';
+import { NEXUS_BROWSE_HANDLERS, browserAgentEnabled } from './browser/nexusTools.js';
 import { trackApplication, listApplications, summarize } from './applicationService.js';
 import { listUpcoming } from './agenda.js';
 import { listRecentActions } from './actionLog.js';
@@ -40,7 +41,7 @@ export function normalizeDates(args, tz) {
  * failing tool becomes something the model can explain instead of a broken stream.
  * `args` must already be normalized (normalizeDates) — call through actionGate.runGuarded.
  */
-export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {}) {
+export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ, source = 'chat' } = {}) {
   try {
     if (name === 'create_note') {
       const { title = null, content, tags = [] } = args ?? {};
@@ -159,8 +160,9 @@ export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {
       };
     }
 
-    const handler = MANAGE_HANDLERS[name] ?? GOOGLE_HANDLERS[name] ?? WEB_HANDLERS[name] ?? UI_HANDLERS[name] ?? BRIEFING_HANDLERS[name] ?? BROWSE_HANDLERS[name];
-    if (handler) return await handler(userId, args ?? {}, { tz });
+    const handler = MANAGE_HANDLERS[name] ?? GOOGLE_HANDLERS[name] ?? WEB_HANDLERS[name] ?? UI_HANDLERS[name] ?? BRIEFING_HANDLERS[name] ?? BROWSE_HANDLERS[name] ??
+      (browserAgentEnabled() ? NEXUS_BROWSE_HANDLERS[name] : undefined);
+    if (handler) return await handler(userId, args ?? {}, { tz, source });
 
     return { ok: false, message: `Unknown tool: ${name}` };
   } catch (err) {

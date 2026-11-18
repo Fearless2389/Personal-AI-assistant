@@ -34,6 +34,10 @@ export const RISK = Object.freeze({
   open_website: 'safe', // a new tab in your browser; asks first right after email/web content (effectiveRisk)
   send_email: 'confirm', // always: it leaves your account and can't be unsent
   browser_step: 'confirm', // a risky step of a browser task (buy, submit, book…): parked by browser/confirm.js
+  browse_web: 'safe', // starts a task; its risky steps each wait for a yes (browser_step)
+  browser_status: 'safe',
+  stop_browser_task: 'safe',
+  answer_browser_task: 'safe',
   manage_calendar_event: Object.freeze({ list: 'safe', '*': 'confirm' }), // your real calendar
   resolve_pending_action: 'safe', // the gate itself decides; see actionGate.resolvePending
   search_memory: 'safe',
@@ -78,7 +82,8 @@ const READ_ONLY = new Set([
   'web_search',
   'read_webpage',
   'open_page',
-  'get_briefing'
+  'get_briefing',
+  'browser_status'
 ]);
 const READ_ACTIONS = new Set(['list', 'read']);
 export const isReadOnly = (name, args = {}) =>

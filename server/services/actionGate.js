@@ -101,7 +101,7 @@ export async function runGuarded(userId, name, rawArgs, { tz = DEFAULT_TZ, sourc
     };
   }
 
-  const { visible: result, undo } = splitUndo(await handleToolCall(name, args, userId, { tz }));
+  const { visible: result, undo } = splitUndo(await handleToolCall(name, args, userId, { tz, source }));
   if (UNTRUSTED_SOURCES.has(name) && result?.ok !== false) untrustedReadAt.set(userId, Date.now());
   if (!isReadOnly(name, args)) {
     const failed = result?.ok === false;
@@ -173,7 +173,7 @@ export async function resolvePending(userId, { id, decision, via, utterance, tz 
   });
   if (!won) return out('already_decided', { message: 'Already handled.' });
 
-  const { visible: result, undo } = splitUndo(await handleToolCall(row.tool, row.args, userId, { tz }));
+  const { visible: result, undo } = splitUndo(await handleToolCall(row.tool, row.args, userId, { tz, source: row.source }));
   const status = result?.ok === false ? 'failed' : 'executed';
   await actionLog.transition(userId, row.id, 'confirmed', status, { result }).catch((err) => {
     console.error('[actions] could not record outcome:', err.message);

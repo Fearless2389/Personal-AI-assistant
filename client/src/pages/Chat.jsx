@@ -13,7 +13,7 @@ import { Badge } from '../components/ui/Badge.jsx';
 import { formatRelative } from '../lib/utils.js';
 import { ConfirmCard } from '../components/shared/ConfirmCard.jsx';
 import { useConfirmStore } from '../store/useConfirmStore.js';
-import { isWaiting } from '../lib/confirmations.js';
+import { isWaiting, browserWaitingIds } from '../lib/confirmations.js';
 import { OWNER_NAME } from '../lib/owner.js';
 
 const SUGGESTIONS = [
@@ -33,7 +33,10 @@ export default function Chat() {
     () => toolResults.filter((r) => r.result?.needs_confirmation).map((r) => r.result.confirmation_id),
     [toolResults]
   );
-  const waitingIds = parkedIds.filter((id) => isWaiting(confirmations[id]));
+  // …plus risky steps of a browser task (they arrive over the browser event stream).
+  const waitingIds = [...new Set([...parkedIds, ...browserWaitingIds(confirmations)])].filter((id) =>
+    isWaiting(confirmations[id])
+  );
   const location = useLocation();
   const navigate = useNavigate();
   // Prompts handed over from elsewhere (e.g. a nudge's "Prep plan") arrive via

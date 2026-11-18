@@ -4,7 +4,7 @@ import { getRunner, httpError } from '../services/browser/agent.js';
 import * as taskStore from '../services/browser/taskStore.js';
 import * as taskHub from '../services/browser/taskHub.js';
 import { openForLogin } from '../services/browser/driver.js';
-import { checkNavigation } from '../services/browser/urlPolicy.js';
+import { checkNavigation, testOrigins } from '../services/browser/urlPolicy.js';
 import { KINDS } from '../services/browser/prompt.js';
 import { OWNER_NAME } from '../services/owner.js';
 
@@ -32,7 +32,7 @@ router.post('/tasks', requireAuth, async (req, res, next) => {
   if (goal.length > MAX_GOAL) return res.status(400).json({ error: `goal is longer than ${MAX_GOAL} characters` });
   if (!KINDS.includes(kind)) return res.status(400).json({ error: `kind must be one of ${KINDS.join(', ')}` });
   if (startUrl !== null) {
-    const checked = checkNavigation(startUrl);
+    const checked = checkNavigation(startUrl, testOrigins());
     if (!checked.ok) return res.status(400).json({ error: checked.reason });
   }
   getRunner()

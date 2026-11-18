@@ -6,6 +6,18 @@ export const PAYMENT_HOST =
   /(^|\.)(paypal\.com|razorpay\.com|paytm\.com|phonepe\.com|stripe\.com|billdesk\.com|ccavenue\.com|payu\.in|cashfree\.com)$|bank|netbanking/i;
 
 /**
+ * TESTING ONLY: exact origins (e.g. the local fixture site http://127.0.0.1:3999) the server's agent
+ * may visit despite the private-address guard, from BROWSER_AGENT_ALLOW_ORIGINS (comma-separated).
+ * Unset in normal use. Never put a router, the Nexus server or anything real here.
+ */
+export function testOrigins() {
+  return String(process.env.BROWSER_AGENT_ALLOW_ORIGINS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => /^https?:\/\/[^/]+$/.test(s));
+}
+
+/**
  * May the agent go to this URL? Public http(s) only (the same SSRF guard as read_webpage), except
  * origins explicitly allowed for the run (the local fixture site in tests, evals and the CLI).
  */

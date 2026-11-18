@@ -6,6 +6,7 @@ import { useUser } from '../../hooks/useSupabase.js';
 import { useCommandBar } from '../../store/useCommandBar.js';
 import { Button } from '../ui/Button.jsx';
 import { VoiceOrb } from '../voice/VoiceOrb.jsx';
+import { startBrowserBridge } from '../../lib/browserBridge.js';
 
 const TITLES = {
   '/dashboard': 'Today',
@@ -27,6 +28,9 @@ export function TopBar() {
   const user = useUser();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+
+  // Browser-agent events (risky-step cards) while signed in; no-op when the agent is off.
+  useEffect(() => startBrowserBridge(), []);
 
   useEffect(() => {
     const onClick = (e) => {

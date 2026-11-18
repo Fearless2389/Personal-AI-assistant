@@ -30,6 +30,25 @@ export function trackParked(result) {
   return true;
 }
 
+/** A risky browser-agent step is waiting (from the browser event stream, not a tool result). */
+export function trackBrowserStep({ id, summary, taskId }) {
+  if (get().confirmations[id]) return;
+  patch(id, { summary, status: 'awaiting_confirmation', error: null, origin: 'browser', taskId });
+}
+
+/** A browser task ended: its cards that still wait can't be approved any more. */
+export function closeBrowserCards(taskId) {
+  for (const c of Object.values(get().confirmations)) {
+    if (c.origin === 'browser' && c.taskId === taskId && isWaiting(c)) patch(c.id, { status: 'cancelled', error: null });
+  }
+}
+
+/** Browser-step cards still waiting (shown in chat next to the session's own). */
+export const browserWaitingIds = (confirmations) =>
+  Object.values(confirmations)
+    .filter((c) => c.origin === 'browser' && isWaiting(c))
+    .map((c) => c.id);
+
 /**
  * Apply a resolve outcome ({ id, tool, status, ok, error, result }) from a tap or
  * resolve_pending_action. Refreshes the affected pages once it executed.

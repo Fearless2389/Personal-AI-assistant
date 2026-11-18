@@ -21,7 +21,11 @@ import {
   Globe,
   Compass,
   ExternalLink,
-  Sunrise
+  Sunrise,
+  MousePointerClick,
+  Activity,
+  Square,
+  Reply
 } from 'lucide-react';
 import { stageMeta } from './applications.js';
 import { actionStatusMeta } from './actionStatus.js';
@@ -136,6 +140,14 @@ export function summarizeTool(name, args = {}, result = {}) {
       };
     case 'read_webpage':
       return { icon: Globe, ok: true, text: `Read: ${result.title || args.url}` };
+    case 'browse_web':
+      return { icon: MousePointerClick, ok: true, text: result.position ? `Queued: ${result.goal ?? args.goal}` : `Started: ${result.goal ?? args.goal}` };
+    case 'browser_status':
+      return { icon: Activity, ok: true, text: result.message ?? 'Checked the browser task' };
+    case 'stop_browser_task':
+      return { icon: Square, ok: true, text: result.message ?? 'Stopped the browser task' };
+    case 'answer_browser_task':
+      return { icon: Reply, ok: true, text: result.message ?? 'Answered the browser task' };
     case 'get_briefing':
       return { icon: Sunrise, ok: true, text: result.briefing?.headline ? `Briefing: ${result.briefing.headline}` : 'Read your briefing' };
     case 'open_website':

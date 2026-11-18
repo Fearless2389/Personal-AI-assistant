@@ -2,6 +2,7 @@ import { tools } from './gemini.js';
 import { buildSystemPrompt } from './memory.js';
 import { formatInTz } from './time.js';
 import { OWNER_NAME } from './owner.js';
+import { browseSpokenRule } from './browser/nexusTools.js';
 
 // Voice mode: the browser talks to the Gemini Live API directly (audio both ways),
 // but only with a short-lived token minted here. The token locks the whole session
@@ -21,7 +22,7 @@ SPOKEN MODE (this conversation is out loud — these rules override the formatti
 - No markdown, bullet points, emojis, URLs or IDs. Say dates and times the way a person would ("Friday at 6 PM").
 - You are a capable general assistant as well as ${OWNER_NAME}'s second brain. Answer general-knowledge questions (history, science, explanations, advice, stories) from your own knowledge, directly. Their situation (above) is context, not a limit.
 - After a tool acts, confirm in one short sentence what you did. If a tool fails, say so plainly.
-- If you are interrupted, drop what you were saying and deal with the new request.
+${browseSpokenRule()}- If you are interrupted, drop what you were saying and deal with the new request.
 - You can search the web and read pages (say the source in a few words, never read out URLs), and you can search and read ${OWNER_NAME}'s email.
 - When something waits for ${OWNER_NAME}'s OK, read the summary back in ONE spoken sentence ending "Should I go ahead?". ${OWNER_NAME} can answer out loud or tap Confirm.`;
 

@@ -222,6 +222,19 @@ export async function streamHotkeyEvents({ onEvent, signal }) {
   });
 }
 
+/** Browser-agent task events (SSE). 404 = the agent isn't enabled on the server. */
+export async function streamBrowserEvents({ onEvent, signal }) {
+  const res = await fetch(`${BASE}/api/browser/events`, {
+    headers: { ...(await authHeaders()), Accept: 'text/event-stream' },
+    signal
+  });
+  if (!res.ok || !res.body) throw Object.assign(new Error(`browser stream ${res.status}`), { status: res.status });
+  await readSse(res, (obj) => {
+    onEvent(obj);
+    return false;
+  });
+}
+
 /**
  * Stream a chat response. `onChunk` is called with each parsed SSE event:
  *   { type: 'text', delta }

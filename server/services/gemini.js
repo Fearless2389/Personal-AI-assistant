@@ -4,6 +4,7 @@ import { GOOGLE_DECLARATIONS } from './googleDeclarations.js';
 import { WEB_DECLARATIONS } from './webTools.js';
 import { UI_DECLARATIONS } from './uiTools.js';
 import { BRIEFING_DECLARATIONS } from './briefingTools.js';
+import { BROWSE_DECLARATIONS, browserAgentEnabled } from './browser/nexusTools.js';
 import { OWNER_NAME } from './owner.js';
 
 const apiKey = process.env.GEMINI_API_KEY;
@@ -151,7 +152,8 @@ export const tools = [
       ...GOOGLE_DECLARATIONS,
       ...WEB_DECLARATIONS,
       ...UI_DECLARATIONS,
-      ...BRIEFING_DECLARATIONS
+      ...BRIEFING_DECLARATIONS,
+      ...(browserAgentEnabled() ? BROWSE_DECLARATIONS : [])
     ]
   }
 ];
