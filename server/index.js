@@ -64,6 +64,17 @@ app.use('/api/voice', voiceRouter);
 app.use('/api/actions', actionsRouter);
 app.use('/api/hotkey', hotkeyRouter);
 
+// Browser agent (PLAN.md): only when enabled, loaded lazily so Playwright isn't imported otherwise.
+if (process.env.BROWSER_AGENT_ENABLED === '1') {
+  const { default: browserRouter } = await import('./routes/browser.js');
+  const { getRunner } = await import('./services/browser/agent.js');
+  app.use('/api/browser', browserRouter);
+  getRunner()
+    .recover()
+    .catch((err) => console.warn('[browser] could not recover tasks:', err.message));
+  console.log('[nexus-server] browser agent enabled (/api/browser)');
+}
+
 // 404 for unmatched /api/*
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 

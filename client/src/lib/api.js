@@ -100,6 +100,18 @@ export const actionsApi = {
   undo: (id) => request(`/api/actions/${id}/undo`, { method: 'POST' })
 };
 
+// Browser agent (server: BROWSER_AGENT_ENABLED=1; otherwise these routes 404).
+export const browserApi = {
+  start: (goal, { kind, startUrl } = {}) => request('/api/browser/tasks', { method: 'POST', body: { goal, kind, startUrl } }),
+  list: (limit = 20) => request(`/api/browser/tasks?limit=${limit}`),
+  get: (id) => request(`/api/browser/tasks/${id}`),
+  status: () => request('/api/browser/status'),
+  stop: (id) => request(`/api/browser/tasks/${id}/stop`, { method: 'POST' }),
+  stopAll: () => request('/api/browser/stop-all', { method: 'POST' }),
+  answer: (id, text) => request(`/api/browser/tasks/${id}/answer`, { method: 'POST', body: { text } }),
+  openForLogin: (url) => request('/api/browser/open', { method: 'POST', body: { url } })
+};
+
 export const habitsApi = {
   list: () => request('/api/habits'),
   create: (payload) => request('/api/habits', { method: 'POST', body: payload }),

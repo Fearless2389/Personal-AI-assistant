@@ -6,7 +6,7 @@
 // tools (relayed to /api/voice/tool, run server-side) → it speaks → turn saved to
 // conversations. Pressing again while it speaks interrupts it (barge-in).
 import { useVoiceStore, MAX_TURNS } from '../../store/useVoiceStore.js';
-import { voiceApi } from '../api.js';
+import { voiceApi, browserApi } from '../api.js';
 import { MicCapture, PcmPlayer } from './audio.js';
 import { LiveSession } from './liveSession.js';
 import { applyToolResult, resolveByTap, resolveBySpeech, cancelAllWaiting, waitingIds } from '../confirmations.js';
@@ -223,6 +223,10 @@ export function stopAll() {
   player?.stop();
   muted = true;
   if (['speaking', 'thinking'].includes(get().status)) setStatus(session?.ready ? 'ready' : 'off');
+  // The kill switch also stops browser-agent tasks (running and queued). 404 = agent not enabled.
+  browserApi.stopAll().catch((err) => {
+    if (err.status !== 404) console.warn('[voice] could not stop browser tasks:', err.message);
+  });
   return cancelAllWaiting();
 }
 

@@ -150,6 +150,16 @@ test('the same page four times in a row asks for help', async () => {
   assert.match(result.question, /stuck/);
 });
 
+test('the kill switch cuts into a model call that hangs', async () => {
+  const abort = new AbortController();
+  const hang = async () => new Promise(() => {}); // a model that never answers
+  setTimeout(() => abort.abort(), 300);
+  const t0 = Date.now();
+  const { result } = await run({ goal: 'x', start: '/index.html', modelTurn: hang, signal: abort.signal });
+  assert.equal(result.status, 'stopped');
+  assert.ok(Date.now() - t0 < 3000, `took ${Date.now() - t0} ms`);
+});
+
 test('the kill switch stops before the next model call', async () => {
   const abort = new AbortController();
   const { modelTurn } = scripted([

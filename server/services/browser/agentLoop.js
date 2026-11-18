@@ -26,7 +26,21 @@ const agentModels = () =>
   process.env.BROWSER_AGENT_MODEL
     ? [...new Set([process.env.BROWSER_AGENT_MODEL, ...CHAT_MODELS])]
     : CHAT_MODELS;
-const sleep = (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
+// Waits end early when the task is stopped (the kill switch must not sit out a pause).
+const sleep = (ms, signal = null) =>
+  new Promise((r) => {
+    if (signal?.aborted) return r();
+    const t = setTimeout(r, Math.max(0, ms));
+    signal?.addEventListener('abort', () => (clearTimeout(t), r()), { once: true });
+  });
+// Rejects as soon as the task is stopped: a model call that hangs (seen: 20 s+) can't delay Stop.
+const untilAborted = (signal) =>
+  new Promise((_, reject) => {
+    if (!signal) return;
+    const fire = () => reject(Object.assign(new Error('Stopped.'), { name: 'AbortError', stopped: true }));
+    if (signal.aborted) fire();
+    else signal.addEventListener('abort', fire, { once: true });
+  });
 const hash = (s) => createHash('sha1').update(s).digest('hex');
 const hostOf = (url) => {
   try {
@@ -220,7 +234,7 @@ export async function runTask({
     }
 
     // 2. Ask the model for one action (D8), paced for the free tier (D10).
-    await sleep(lastCallAt + intervalMs() - Date.now());
+    await sleep(lastCallAt + intervalMs() - Date.now(), signal);
     if (signal?.aborted) return finish('stopped', { summary: 'Stopped.' });
     onEvent({ type: 'thinking', n });
     const contents = buildContents(entries, pageText, lastResult, planted);
@@ -228,14 +242,16 @@ export async function runTask({
     for (let attempt = 1; ; attempt++) {
       lastCallAt = Date.now();
       try {
-        const r = await modelTurn({ system, contents, declarations, model });
+        const call = modelTurn({ system, contents, declarations, model });
+        const r = signal ? await Promise.race([call, untilAborted(signal)]) : await call;
         turn = r.turn;
         if (!model) modelName = r.name;
         model = r.model;
         break;
       } catch (err) {
-        if (attempt < 2 && isModelUnavailable(err) && !signal?.aborted) {
-          await sleep(RETRY_WAIT_MS);
+        if (err?.stopped || signal?.aborted) return finish('stopped', { summary: 'Stopped.' });
+        if (attempt < 2 && isModelUnavailable(err)) {
+          await sleep(RETRY_WAIT_MS, signal);
           continue;
         }
         return finish('failed', { summary: `The model didn't answer: ${String(err.message).slice(0, 160)}` });
