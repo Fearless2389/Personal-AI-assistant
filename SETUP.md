@@ -101,7 +101,7 @@ Optional:
 
 ```
 TAVILY_API_KEY=...               # real web search (free ~1,000/month at tavily.com); without it, Wikipedia only
-HOTKEY_SECRET=...                # any long random value; enables the global Ctrl+Alt+Space tray helper
+HOTKEY_SECRET=...                # any long random value; enables the global Alt+Space tray helper
 OWNER_CONTEXT="..."              # your situation in a sentence or two (job, studies, focus); the assistant assumes it
 GEMINI_CHAT_MODEL=gemini-flash-latest              # chat model (default)
 GEMINI_CHAT_FALLBACK_MODEL=gemini-flash-lite-latest # used when the first one hangs or is overloaded
@@ -125,8 +125,12 @@ Try it without the app: `cd server; npm run agent -- "Find the cheapest laptop a
 (results in `docs/agent-evals.md`). Sign in to a site by hand in the agent window: Nexus never types passwords.
 
 Global push-to-talk (Windows): with the server running, `cd server; npm run hotkey`. A tray icon
-appears; hold Ctrl+Alt+Space anywhere to talk to the open Nexus tab (click the tab once after
+appears; hold Alt+Space anywhere to talk to the open Nexus tab (click the tab once after
 loading it — browsers require that before audio can play).
+While it runs, Alt+Space no longer opens Windows' window menu (quit the helper to get that back).
+If it says Alt+Space is taken, another app has it (PowerToys Run and the ChatGPT app use it by default):
+change that app's shortcut. Without the helper, Alt+Space does nothing in Nexus (Windows keeps it);
+hold the mic orb instead.
 
 **`client/.env`**:
 

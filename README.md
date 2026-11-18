@@ -12,7 +12,7 @@ memory. Built solo by Ruthvik on a strict free-tier-only stack.
 
 ## What works
 
-- **Voice (Jarvis v1, in progress)** — hold the mic orb in the top bar (or Ctrl+Alt+Space) and
+- **Voice (Jarvis v1, in progress)** — hold the mic orb in the top bar (or Alt+Space) and
   talk; Nexus answers out loud in about a second, uses the same tools as chat ("got the Amazon OA,
   due Sunday 9 PM" updates the card), and stops the moment you talk over it. Gemini Live
   (`gemini-3.8-live`, free tier); the API key never reaches the browser.
@@ -35,7 +35,7 @@ memory. Built solo by Ruthvik on a strict free-tier-only stack.
 - **Web** — "research Atlassian before my interview" searches, reads the best page and saves a brief
   with sources. Pages are read safely (no private/internal addresses) and treated as untrusted.
   Real web search needs a free Tavily key; without one, search falls back to Wikipedia.
-- **Global push-to-talk** — `npm run hotkey` adds a tray icon: hold Ctrl+Alt+Space anywhere in Windows.
+- **Global push-to-talk** — `npm run hotkey` adds a tray icon: hold Alt+Space anywhere in Windows.
   Voice also remembers the conversation across reconnects (about 2 hours), "open my habits" switches pages, and
   "open YouTube" opens the site in a new tab (allow pop-ups for the Nexus site once so voice can do it hands-free).
 - **Gmail + Calendar** — "anything from Amazon recruiting?", "read it", "draft a reply", "move my 5 PM to

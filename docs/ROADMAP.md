@@ -60,7 +60,7 @@ None blocking. New ones get added here as they come up.
 | Item | Status | Notes |
 | --- | --- | --- |
 | Web Speech mic button (chat, ⌘K) | shipped | Chrome-only, one-shot dictation. |
-| Push-to-talk inside Nexus (hold orb or Ctrl+Alt+Space) | shipped | Phase 1. `components/voice/VoiceOrb.jsx`. |
+| Push-to-talk inside Nexus (hold orb or Alt+Space) | shipped | Phase 1. `components/voice/VoiceOrb.jsx`. |
 | Push-to-talk hotkey (global, via tray helper) | shipped | Phase 4. `cd server; npm run hotkey`. Loopback + `HOTKEY_SECRET` only; one tab listens (Web Locks); a hold auto-releases after 60 s. |
 | Real-time voice conversation (Gemini Live) | shipped | Phase 1. `gemini-3.8-live` (free tier). ~0.7–0.9 s to first spoken word, ~1.5 s with a tool call. Click the orb to pre-warm (setup 2–3 s). |
 | Barge-in (interrupt it mid-sentence) | shipped | Phase 1. Local playback stops at once; server confirms with `interrupted`. |

@@ -70,7 +70,7 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
   turns are saved via `POST /api/voice/turn` (`session_id` = `voice-<uuid>`). Server: `services/voice.js`,
   `routes/voice.js`; prompt context from `services/assistantContext.js` (shared with chat). Client:
   `lib/voice/` (audio, liveSession, engine) → `useVoiceStore` → `components/voice/VoiceOrb.jsx` in the
-  TopBar (hold orb or Ctrl+Alt+Space). `engine.askAloud(text, cue)` sends a typed request from a button
+  TopBar (hold orb or Alt+Space; one definition in `lib/voice/hotkey.js`). `engine.askAloud(text, cue)` sends a typed request from a button
   (Today's Listen → get_briefing, spoken). Resumption: the token may carry `sessionResumption.handle`; the engine
   keeps the newest handle ~110 min (End voice forgets). Global hotkey: `tools/hotkey/nexus-hotkey.ps1` →
   `POST /api/hotkey/:dir` (loopback + `HOTKEY_SECRET`) → SSE `GET /api/hotkey/events` → `lib/voice/hotkeyBridge.js`
