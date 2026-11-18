@@ -13,19 +13,20 @@ import { OWNER_NAME } from '../owner.js';
 import { takeSnapshot, renderSnapshot } from './snapshot.js';
 import { runAction, checkNavigation } from './actions.js';
 import { classifyStep } from './risk.js';
-import { buildAgentSystem, buildStepTurn, findInjection } from './prompt.js';
+import { buildAgentSystem, buildStepTurn, findInjection, signInNeeded } from './prompt.js';
 import { stepDeclarationsFor, toAction } from './declarations.js';
 
 export const BUDGET = { steps: 30, ms: 10 * 60_000, failures: 3 };
 export const HISTORY_WINDOW = 6; // D9: raw step exchanges kept; older ones become PROGRESS lines
 const STUCK_REPEATS = 4;
+const MAX_SCROLLS_IN_A_ROW = 4; // more on one page → ask instead of wandering (Amazon, 2026-11-18)
 const RETRY_WAIT_MS = 10_000;
 
 const intervalMs = () => Number(process.env.BROWSER_STEP_INTERVAL_MS ?? 5000);
-const agentModels = () =>
-  process.env.BROWSER_AGENT_MODEL
-    ? [...new Set([process.env.BROWSER_AGENT_MODEL, ...CHAT_MODELS])]
-    : CHAT_MODELS;
+// D13 (2026-11-18): the agent tries gemini-flash-lite-latest first. flash-latest timed out on the first
+// call of nearly every run (20 s lost each task), and lite answered every eval (12/12, 18/18).
+const AGENT_DEFAULT_MODEL = 'gemini-flash-lite-latest';
+const agentModels = () => [...new Set([process.env.BROWSER_AGENT_MODEL || AGENT_DEFAULT_MODEL, ...CHAT_MODELS])];
 // Waits end early when the task is stopped (the kill switch must not sit out a pause).
 const sleep = (ms, signal = null) =>
   new Promise((r) => {
@@ -151,6 +152,7 @@ export async function runTask({
   const collected = resume?.collected ?? [];
   const recentHashes = [];
   const warnings = resume?.warnings ?? []; // [{ url, text }] planted instructions seen on pages
+  const askedSignIn = resume?.askedSignIn ?? []; // hosts where Ruthvik was already asked to sign in
   let failures = resume?.failures ?? 0;
   let lastResult = null;
   let lastElement = resume?.lastElement ?? null;
@@ -172,7 +174,7 @@ export async function runTask({
   const pause = (question, n, pending = null) =>
     finish('waiting_user', {
       question,
-      state: { entries, steps, collected, warnings, failures, lastElement, model, modelName, n, elapsedMs: Date.now() - started, ...pending }
+      state: { entries, steps, collected, warnings, askedSignIn, failures, lastElement, model, modelName, n, elapsedMs: Date.now() - started, ...pending }
     });
   const record = (step) => {
     steps.push(step);
@@ -221,6 +223,27 @@ export async function runTask({
     } catch (err) {
       return finish('failed', { summary: `Couldn't read the page: ${String(err.message).split('\n')[0]}` });
     }
+    // Signed out on a site whose errand needs the account: ask once per site (Ruthvik signs in by hand).
+    const host = hostOf(snap.url);
+    const signIn = signInNeeded(goal, kind, snap.elements);
+    if (signIn && !askedSignIn.includes(host)) {
+      askedSignIn.push(host);
+      return pause(
+        `You're not signed in to ${host} in the agent window, so what I add won't be in your account. ` +
+          `Sign in there yourself (I never type passwords), then tell me "done". Or say "continue as guest".`,
+        n - 1
+      );
+    }
+
+    // Scrolling back and forth on one page without acting: ask instead of burning steps.
+    const recentActions = steps.slice(-MAX_SCROLLS_IN_A_ROW);
+    if (
+      recentActions.length === MAX_SCROLLS_IN_A_ROW &&
+      recentActions.every((s) => s.action === 'scroll' && s.url === snap.url)
+    ) {
+      return pause(`I've scrolled around "${snap.title}" without finding what I need. What should I look for?`, n - 1);
+    }
+
     const pageText = renderSnapshot(snap);
     const planted = findInjection(snap.text);
     if (planted && !warnings.some((w) => w.url === snap.url)) {

@@ -18,6 +18,21 @@ const INJECTION = [
   /\bno (confirmation|approval) (is )?(needed|required)\b/i
 ];
 
+// Goals that only make sense in the owner's own account (a guest cart lives only in the agent window).
+const ACCOUNT_GOAL = /\b(cart|basket|buy|purchase|order|book|booking|checkout|check out|apply|register|wish ?list|subscribe|reserve)\b/i;
+// "Hello, sign in", "Sign in", "Log in", "Login" in the page's own controls = signed out.
+const SIGN_IN = /^(hello,?\s*)?(sign ?in|log ?in|login)\b/i;
+
+/**
+ * Should the agent stop and ask the owner to sign in? → the sign-in control's name, or null. Pure.
+ * Only for errands that need the account, and only when the page shows a sign-in link/button.
+ */
+export function signInNeeded(goal, kind, elements = []) {
+  if (kind !== 'errand' || !ACCOUNT_GOAL.test(String(goal ?? ''))) return null;
+  const el = elements.find((e) => (e.role === 'link' || e.role === 'button') && SIGN_IN.test(String(e.name ?? '').trim()));
+  return el ? el.name : null;
+}
+
 /** The first sentence of page text that looks like an instruction aimed at the agent, or null. Pure. */
 export function findInjection(text) {
   const sentences = String(text ?? '').split(/(?<=[.!?])\s+|\n/);

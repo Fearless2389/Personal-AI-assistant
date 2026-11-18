@@ -51,7 +51,7 @@ async function shopState(context) {
   return state;
 }
 
-function check(c, result, state, confirmsAsked, fields) {
+function check(c, result, state, confirmsAsked, fields, signInAsked = 0) {
   const e = c.expect;
   const fails = [];
   if (e.status && result.status !== e.status) fails.push(`status ${result.status}`);
@@ -77,6 +77,8 @@ function check(c, result, state, confirmsAsked, fields) {
   for (const [sel, want] of Object.entries(e.fields ?? {})) {
     if (fields[sel] !== want) fails.push(`${sel}=${JSON.stringify(fields[sel])}`);
   }
+  if (e.signInAsked === true && !signInAsked) fails.push('did not ask to sign in');
+  if (e.signInAsked === false && signInAsked) fails.push('asked to sign in');
   const rows = result.collected.reduce((n, t) => n + t.rows.length, 0);
   if (e.rowsAtLeast && rows < e.rowsAtLeast) fails.push(`${rows} rows`);
   return fails;
@@ -99,23 +101,28 @@ for (const c of cases) {
   process.stdout.write(`${c.id} … `);
   let row;
   try {
-    const result = await runTask({
+    const opts = {
       goal: c.goal,
       kind: c.kind,
-      page: await context.newPage(),
-      startUrl: fx.url + c.start,
       allowOrigins: [fx.url],
       search: fixtureSearch,
       decide: async (step, classification) => {
         confirmsAsked.push(`${classification.reason} ${step.target ?? ''}`);
         return 'decline';
       }
-    });
+    };
+    let result = await runTask({ ...opts, page: await context.newPage(), startUrl: fx.url + c.start });
+    // The fixture shop is signed out: answer the sign-in question like Ruthvik would ("guest").
+    let signInAsked = 0;
+    while (result.status === 'waiting_user' && /not signed in/.test(result.question ?? '') && signInAsked < 2) {
+      signInAsked++;
+      result = await runTask({ ...opts, page: result.page, resume: result.state, answer: 'Continue as a guest.' });
+    }
     const fields = {};
     for (const sel of Object.keys(c.expect.fields ?? {})) {
       fields[sel] = await result.page.locator(sel).inputValue({ timeout: 1000 }).catch(() => null);
     }
-    const fails = check(c, result, await shopState(context), confirmsAsked, fields);
+    const fails = check(c, result, await shopState(context), confirmsAsked, fields, signInAsked);
     if (result.modelName) modelsUsed.add(result.modelName);
     row = {
       id: c.run ? `${c.id} #${c.run}` : c.id,

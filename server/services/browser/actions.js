@@ -86,11 +86,14 @@ async function perform(page, action, allowOrigins) {
 }
 
 export async function runAction(page, action, { allowOrigins = [] } = {}) {
-  // A click can open a new tab: listen before acting, give it a second to appear.
-  const popup = page
-    .context()
-    .waitForEvent('page', { timeout: 1000 })
-    .catch(() => null);
+  // A click (or Enter) can open a new tab: listen before acting, give it a second to appear.
+  const mayOpenTab = action.type === 'click' || (action.type === 'type' && action.submit) || action.key === 'Enter';
+  const popup = mayOpenTab
+    ? page
+        .context()
+        .waitForEvent('page', { timeout: 1000 })
+        .catch(() => null)
+    : Promise.resolve(null);
   takeBlock(page); // forget blocks from before this step
   const before = page.url();
   let result;

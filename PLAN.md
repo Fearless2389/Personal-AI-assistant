@@ -88,6 +88,7 @@ reference and its conventions are binding.
 | D10 | Pacing: at least **5000 ms** between model calls (`BROWSER_STEP_INTERVAL_MS`). | Free-tier RPM. |
 | D11 | Research output (use case 2): a Nexus **note** with a markdown table + sources, and a **CSV** download. Google Sheets is out of scope (dolater). | No new Google scopes. |
 | D12 | Screenshots: one JPEG (quality 60, 1280×800) per executed step, saved to `server/.agent-shots/<taskId>/<n>.jpg` (gitignored), served to the owner only, deleted after 7 days. | Visual step feed for Ruthvik; never sent to the model in v1. |
+| D13 | **The agent tries `gemini-flash-lite-latest` first** (then the chat models; `BROWSER_AGENT_MODEL` overrides). Decided 2026-11-18 after Ruthvik's first real Amazon run. | flash-latest timed out (20 s) on the first call of nearly every run; lite answered every eval (fixtures 12/12, red team 18/18). Real Amazon: ~7 s per step instead of 12–15 s. |
 
 **New env vars** (all optional; document in `SETUP.md` in Task 6.4):
 ```

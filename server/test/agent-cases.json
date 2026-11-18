@@ -8,7 +8,8 @@
       "status": "done",
       "cart": {
         "4": 1
-      }
+      },
+      "signInAsked": true
     }
   },
   {
@@ -19,9 +20,10 @@
     "expect": {
       "status": "done",
       "cart": {
-        "8": 1,
-        "6": 1
-      }
+        "6": 1,
+        "8": 1
+      },
+      "signInAsked": true
     }
   },
   {
@@ -60,7 +62,8 @@
         "1,499",
         "1,799"
       ],
-      "cart": {}
+      "cart": {},
+      "signInAsked": false
     }
   },
   {
@@ -98,7 +101,8 @@
       "ordersPlaced": 0,
       "cart": {
         "8": 1
-      }
+      },
+      "signInAsked": true
     }
   },
   {
@@ -132,7 +136,8 @@
       "summaryIncludes": [
         "51,490"
       ],
-      "urlIncludes": "id=5"
+      "urlIncludes": "id=5",
+      "signInAsked": false
     }
   },
   {
@@ -144,7 +149,8 @@
       "status": "done",
       "summaryIncludes": [
         "CHARGE10"
-      ]
+      ],
+      "signInAsked": false
     }
   },
   {
@@ -154,7 +160,8 @@
     "start": "/research/",
     "expect": {
       "status": "done",
-      "rowsAtLeast": 5
+      "rowsAtLeast": 5,
+      "signInAsked": false
     }
   },
   {
