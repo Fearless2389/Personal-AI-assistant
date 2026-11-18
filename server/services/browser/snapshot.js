@@ -20,28 +20,53 @@ export function SNAPSHOT_SCRIPT({ maxElements, maxText }) {
   const viewH = window.innerHeight;
   const viewW = window.innerWidth;
 
-  // Can a person see this element (now, or after scrolling)?
+  // Can a person see this element (now, or after scrolling)? `ignoreOpacity` is for the
+  // transparent-control check below; everything else must also be non-transparent.
   const seen = new Map();
-  const isVisible = (el) => {
-    if (seen.has(el)) return seen.get(el);
+  const isVisible = (el, ignoreOpacity = false) => {
+    const key = ignoreOpacity ? 'o' : 'v';
+    if (!seen.has(el)) seen.set(el, {});
+    const memo = seen.get(el);
+    if (key in memo) return memo[key];
     let ok = true;
     if (el.closest('[aria-hidden="true"], [inert]')) ok = false;
     else if (
       el.checkVisibility &&
-      !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true, contentVisibilityAuto: true })
+      !el.checkVisibility({ checkOpacity: !ignoreOpacity, checkVisibilityCSS: true, contentVisibilityAuto: true })
     )
       ok = false;
     else {
       const style = getComputedStyle(el);
       const rect = el.getBoundingClientRect();
-      if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) <= 0.1) ok = false;
+      if (style.display === 'none' || style.visibility === 'hidden') ok = false;
+      else if (!ignoreOpacity && Number(style.opacity) <= 0.1) ok = false;
       else if (rect.width < 1 || rect.height < 1) ok = false;
       // pushed off the page to the left/top (a classic way to hide text)
       else if (rect.right + window.scrollX <= 0 || rect.bottom + window.scrollY <= 0) ok = false;
       else if (parseFloat(style.fontSize) < 4 && el.children.length === 0) ok = false;
     }
-    seen.set(el, ok);
+    memo[key] = ok;
     return ok;
+  };
+
+  // Big shops (Amazon's "Add to Cart", "Buy Now") put a TRANSPARENT <input> on top of a styled,
+  // visible label. Such a control counts as visible only if it is the topmost element at its centre
+  // and its parent shows text; it is then named by that visible text (what a person sees). If its
+  // own label says something else, both are shown, so risk.js still sees e.g. "Delete account".
+  const overlayName = (el) => {
+    if (!['INPUT', 'BUTTON'].includes(el.tagName)) return null;
+    if (el.tagName === 'INPUT' && !['submit', 'button', 'image'].includes(el.type)) return null;
+    const parent = el.parentElement;
+    if (!parent || parent === document.body || parent === document.documentElement) return null;
+    if (!isVisible(el, true) || !isVisible(parent)) return null;
+    const r = el.getBoundingClientRect();
+    // The overlay pattern: the control covers (most of) its label's box, like a sheet of glass.
+    const pr = parent.getBoundingClientRect();
+    if (pr.width * pr.height === 0 || (r.width * r.height) / (pr.width * pr.height) < 0.6) return null;
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    if (!hit || (hit !== el && !el.contains(hit))) return null;
+    const shown = clean(parent.innerText);
+    return shown || null;
   };
 
   const ROLE_BY_INPUT = {
@@ -88,6 +113,13 @@ export function SNAPSHOT_SCRIPT({ maxElements, maxText }) {
     return '';
   };
 
+  // Visible text first; the control's own label too when it says something different.
+  const overlayLabel = (shown, own) => {
+    const a = shown.toLowerCase();
+    const b = String(own ?? '').toLowerCase();
+    return !b || a.includes(b) || b.includes(a) ? shown : clean(`${shown} [${own}]`);
+  };
+
   const SUBMITTERS = 'button:not([type]), button[type="submit"], input[type="submit"], input[type="image"]';
   const formSubmitName = (el) => {
     const form = el.form ?? el.closest('form');
@@ -109,7 +141,11 @@ export function SNAPSHOT_SCRIPT({ maxElements, maxText }) {
     const rect = el.getBoundingClientRect();
     // on screen, or within one more screen below (what one scroll would reveal)
     if (rect.bottom <= 0 || rect.top >= viewH * 2 || rect.right <= 0 || rect.left >= viewW) continue;
-    if (!isVisible(el)) continue;
+    let shownName = null;
+    if (!isVisible(el)) {
+      shownName = overlayName(el);
+      if (!shownName) continue;
+    }
     if (elements.length >= maxElements) {
       more = true;
       break;
@@ -139,7 +175,7 @@ export function SNAPSHOT_SCRIPT({ maxElements, maxText }) {
     elements.push({
       ref,
       role,
-      name: nameOf(el),
+      name: shownName ? overlayLabel(shownName, nameOf(el)) : nameOf(el),
       value,
       options,
       type,

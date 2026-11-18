@@ -86,3 +86,18 @@ test('rendered format for the registration form matches snapshot.expected.txt', 
   const expected = (await readFile(EXPECTED, 'utf8')).replace(/\r\n/g, '\n').trimEnd();
   assert.equal(rendered, expected);
 });
+
+test('transparent buttons over a visible label (Amazon) are seen, named by what a person sees', async () => {
+  await page.setContent(`
+    <style>.btn{position:relative;display:inline-block;padding:8px 16px;background:#ffd814}
+      .btn input{position:absolute;inset:0;width:100%;height:100%;opacity:0.01;cursor:pointer}</style>
+    <form><span class="btn"><input type="submit" aria-labelledby="atc"><span id="atc">Add to Cart</span></span></form>
+    <form><span class="btn"><input type="submit" value="Delete account"><span>View offers</span></span></form>
+    <button style="opacity:0">Invisible on its own</button>
+    <span class="btn"><input type="submit" style="opacity:0.01" value="Covered"><span style="position:absolute;inset:0;background:#fff">Cover</span></span>`);
+  const names = (await takeSnapshot(page)).elements.map((e) => e.name);
+  assert.ok(names.includes('Add to Cart'), names.join(' | '));
+  assert.ok(names.includes('View offers [Delete account]'), names.join(' | ')); // the hidden label is shown too
+  assert.ok(!names.some((n) => /Invisible on its own/.test(n))); // transparent with no visible label: hidden
+  assert.ok(!names.some((n) => /Covered/.test(n))); // not on top at its centre: hidden
+});

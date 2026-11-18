@@ -17,6 +17,9 @@ export const RISKY_NAME =
   /\b(buy|pay|place (your )?order|check ?out|proceed to (checkout|pay(ment)?|buy)|submit|send|post|publish|tweet|reply|delete|remove account|cancel (order|booking|subscription)|confirm|book( now| slot)?|reserve|transfer|donate|subscribe|sign ?up|register|apply( now)?|unsubscribe|log ?out|sign ?out|save changes|update (password|email|phone)|accept( offer)?|agree|add payment|upgrade)\b/i;
 // Buttons that only look things up. "Apply filters" matches RISKY_NAME's "apply" but is harmless.
 export const SEARCHY = /^(go|find|filter|filters|sort|apply filters?|show results|search\b.*|.*\bsearch)$/i;
+// Submit buttons that only put something in a cart/list (Amazon's "Add to cart" is a form submit).
+// Adding to the cart is allowed (PLAN.md): nothing is bought until checkout, which still asks.
+export const CART_ADD = /^(add to (cart|bag|basket|trolley|wish ?list|list)|add)$/i;
 
 const EMAIL = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
 const PHONE = /(?<!\d)(?:\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}(?!\d)/g;
@@ -127,7 +130,8 @@ export function classifyStep(action, { element = null, focused = null, pageUrl =
   }
 
   // 6. Any submit button that isn't a search.
-  if (type === 'click' && element?.type === 'submit' && element.formSubmitName && !SEARCHY.test(String(element.name).trim())) {
+  const submitName = String(element?.name ?? '').trim();
+  if (type === 'click' && element?.type === 'submit' && element.formSubmitName && !SEARCHY.test(submitName) && !CART_ADD.test(submitName)) {
     return { risk: 'confirm', reason: `Submit the form (${quote(element.name || 'Submit')})` };
   }
 

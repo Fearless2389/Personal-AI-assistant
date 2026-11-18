@@ -13,6 +13,9 @@ const CASES = [
   // [label, action, ctx, expected risk]
   ['Add to cart', { type: 'click', ref: 1 }, { element: btn('Add to cart') }, 'safe'],
   ['View link', { type: 'click', ref: 1 }, { element: link('View') }, 'safe'],
+  ['Add to cart as a form submit (Amazon)', { type: 'click', ref: 1 }, { element: btn('Add to cart', { type: 'submit', formSubmitName: 'Add to cart' }) }, 'safe'],
+  ['Buy Now as a form submit (Amazon)', { type: 'click', ref: 1 }, { element: btn('Buy Now', { type: 'submit', formSubmitName: 'Add to cart' }) }, 'confirm'],
+  ['transparent "View offers" over a hidden Delete', { type: 'click', ref: 1 }, { element: btn('View offers [Delete account]', { type: 'submit', formSubmitName: 'View offers' }) }, 'confirm'],
   ['Remove from cart', { type: 'click', ref: 1 }, { element: btn('Remove') }, 'safe'],
   ['Apply filters', { type: 'click', ref: 1 }, { element: btn('Apply filters') }, 'safe'],
   ['Search submit', { type: 'click', ref: 1 }, { element: btn('Search', { type: 'submit', formSubmitName: 'Search' }) }, 'safe'],
