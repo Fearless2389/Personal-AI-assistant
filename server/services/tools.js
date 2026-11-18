@@ -7,6 +7,7 @@ import { GOOGLE_HANDLERS, prepareGoogleAction, googleErrorResult } from './googl
 import { WEB_HANDLERS } from './webTools.js';
 import { UI_HANDLERS, prepareWebsite } from './uiTools.js';
 import { BRIEFING_HANDLERS } from './briefingTools.js';
+import { BROWSE_HANDLERS } from './browser/confirm.js';
 import { trackApplication, listApplications, summarize } from './applicationService.js';
 import { listUpcoming } from './agenda.js';
 import { listRecentActions } from './actionLog.js';
@@ -158,7 +159,7 @@ export async function handleToolCall(name, args, userId, { tz = DEFAULT_TZ } = {
       };
     }
 
-    const handler = MANAGE_HANDLERS[name] ?? GOOGLE_HANDLERS[name] ?? WEB_HANDLERS[name] ?? UI_HANDLERS[name] ?? BRIEFING_HANDLERS[name];
+    const handler = MANAGE_HANDLERS[name] ?? GOOGLE_HANDLERS[name] ?? WEB_HANDLERS[name] ?? UI_HANDLERS[name] ?? BRIEFING_HANDLERS[name] ?? BROWSE_HANDLERS[name];
     if (handler) return await handler(userId, args ?? {}, { tz });
 
     return { ok: false, message: `Unknown tool: ${name}` };

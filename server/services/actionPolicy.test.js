@@ -152,3 +152,16 @@ test('send and calendar readbacks name exactly what will happen', () => {
     'Delete "Uber OA" on Fri, 6 PM from your Google Calendar'
   );
 });
+
+test('browser steps always wait, read back the site and step, and are not undoable', async () => {
+  const { undoBlockedReason } = await import('./actionPolicy.js');
+  assert.equal(riskOf('browser_step'), 'confirm');
+  assert.equal(
+    describeAction('browser_step', { url: 'https://www.amazon.in/cart', label: 'click "Proceed to checkout"' }),
+    'On www.amazon.in: click "Proceed to checkout"'
+  );
+  assert.equal(
+    undoBlockedReason({ status: 'executed', tool: 'browser_step', undo: null, created_at: new Date().toISOString() }, Date.now()),
+    "Steps on websites can't be undone from Nexus."
+  );
+});

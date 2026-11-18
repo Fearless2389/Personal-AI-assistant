@@ -11,6 +11,7 @@
 import * as taskStore from './taskStore.js';
 import { runTask } from './agentLoop.js';
 import { newPage } from './driver.js';
+import { makeDecide, reportStep } from './confirm.js';
 
 export const MAX_QUEUE = 5;
 export const ANSWER_TIMEOUT_MS = 15 * 60_000;
@@ -21,7 +22,9 @@ export function createRunner({
   run = runTask,
   openPage = newPage,
   hub = { emit() {} },
-  decideFor = () => async () => 'decline', // chunk 2E: park in action_log, wait for the gate
+  // Confirm steps: parked in action_log and decided through the gate (confirm.js).
+  decideFor = (userId, task, slot) => makeDecide({ userId, task, signal: slot.abort.signal, store, hub }),
+  allowOrigins = [], // the local fixture site, for live checks only
   answerTimeoutMs = ANSWER_TIMEOUT_MS,
   maxQueue = MAX_QUEUE,
   log = console
@@ -75,6 +78,7 @@ export function createRunner({
         page: slot.page,
         startUrl: resume ? null : task.start_url,
         signal: slot.abort.signal,
+        allowOrigins,
         decide: decideFor(userId, task, slot),
         resume,
         answer,
@@ -110,6 +114,7 @@ export function createRunner({
   function onLoopEvent(userId, slot, event) {
     if (event.type !== 'step') return;
     const step = event.step;
+    reportStep(userId, slot.id, step); // a step that waited on the gate: tell it what happened
     slot.steps += 1;
     store
       .addStep(userId, slot.id, step)

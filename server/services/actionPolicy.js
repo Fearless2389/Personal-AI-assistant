@@ -33,6 +33,7 @@ export const RISK = Object.freeze({
   undo_action: 'safe', // reverses Nexus's own change to Ruthvik's data; the plan is checked (undo.js)
   open_website: 'safe', // a new tab in your browser; asks first right after email/web content (effectiveRisk)
   send_email: 'confirm', // always: it leaves your account and can't be unsent
+  browser_step: 'confirm', // a risky step of a browser task (buy, submit, book…): parked by browser/confirm.js
   manage_calendar_event: Object.freeze({ list: 'safe', '*': 'confirm' }), // your real calendar
   resolve_pending_action: 'safe', // the gate itself decides; see actionGate.resolvePending
   search_memory: 'safe',
@@ -91,7 +92,8 @@ export const UNDO_WINDOW_MS = 24 * 60 * 60_000;
 
 const NOT_UNDOABLE = {
   create_calendar_event: 'Calendar changes', manage_calendar_event: 'Calendar changes',
-  send_email: 'Sent emails', draft_email: 'Gmail drafts', open_website: 'Opened websites', open_page: 'Page switches'
+  send_email: 'Sent emails', draft_email: 'Gmail drafts', open_website: 'Opened websites', open_page: 'Page switches',
+  browser_step: 'Steps on websites'
 };
 
 /** May this logged action be undone now? → null, or the reason it can't (said to Ruthvik). */
@@ -166,6 +168,13 @@ export function describeAction(name, args = {}, formatWhen = (iso) => iso) {
     }
     case 'open_website':
       return `Open ${args.site ?? args.url ?? 'a website'} in a new tab`;
+    case 'browser_step': {
+      let host = 'a website';
+      try {
+        host = new URL(args.url).host;
+      } catch {}
+      return `On ${host}: ${args.label ?? args.action ?? 'a step'}`;
+    }
     default:
       {
         // manage_* deletes: target_label is pinned by the gate after it resolves the item.
