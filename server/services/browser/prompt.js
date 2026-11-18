@@ -48,7 +48,9 @@ export function buildStepTurn(snapshotText, progressLines = [], lastResult = nul
   if (progressLines.length) {
     parts.push('PROGRESS:', ...progressLines.map((line, i) => `${i + 1}. ${line}`));
   }
-  if (lastResult) {
+  if (lastResult?.answer !== undefined) {
+    parts.push(`ANSWER FROM ${OWNER_NAME.toUpperCase()}: ${lastResult.answer}`);
+  } else if (lastResult) {
     parts.push(`LAST RESULT: ${lastResult.ok ? 'ok' : `error: ${lastResult.error ?? 'failed'}`}`);
   }
   parts.push('<page untrusted="true">', snapshotText, '</page>');

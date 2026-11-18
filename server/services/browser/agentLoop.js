@@ -30,6 +30,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
 const hash = (s) => createHash('sha1').update(s).digest('hex');
 const quote = (s) => `"${String(s ?? '').slice(0, 50)}"`;
 
+/**
+ * One model turn for the loop: the first on the healthiest model (fallback), later ones on the
+ * same model (thought signatures are per model). Injectable so tests can script the model.
+ * → { turn: { calls, content }, model, name }
+ */
+export async function geminiTurn({ system, contents, declarations, model }) {
+  if (model) return { turn: await streamTurn(model, contents), model, name: null };
+  const first = await firstTurnWithFallback(system, contents, () => {}, { declarations, models: agentModels() });
+  return { turn: first.turn, model: first.model, name: first.name };
+}
+
 /** One line for the step log and the PROGRESS block. */
 export function describeStep(action, element) {
   const target = element
@@ -92,7 +103,11 @@ function buildContents(entries, pageText, lastResult) {
  * @param opts.onEvent      (event) → void   { type: 'step' | 'thinking' | 'finished', … }
  * @param opts.signal       AbortSignal: the kill switch (S5)
  * @param opts.search       web search for research (default: services/webSearch.js)
- * @returns { status: 'done'|'failed'|'stopped'|'waiting_user', success, summary, question, steps, collected, page, modelName }
+ * @param opts.resume       the `state` a `waiting_user` result returned: continue that task …
+ * @param opts.answer       … with Ruthvik's answer to its question
+ * @param opts.modelTurn    the model call (default geminiTurn; tests pass a scripted one)
+ * @returns { status: 'done'|'failed'|'stopped'|'waiting_user', success, summary, question, steps, collected, page,
+ *            modelName, state (only when waiting_user: pass it back as `resume`) }
  */
 export async function runTask({
   goal,
@@ -103,18 +118,22 @@ export async function runTask({
   decide = async () => 'decline',
   onEvent = () => {},
   signal = null,
-  search = webSearch
+  search = webSearch,
+  resume = null,
+  answer = null,
+  modelTurn = geminiTurn
 }) {
-  const started = Date.now();
-  const steps = [];
-  const entries = [];
-  const collected = [];
+  // Waiting for an answer doesn't count against the 10-minute budget.
+  const started = Date.now() - (resume?.elapsedMs ?? 0);
+  const steps = resume?.steps ?? [];
+  const entries = resume?.entries ?? [];
+  const collected = resume?.collected ?? [];
   const recentHashes = [];
-  let failures = 0;
+  let failures = resume?.failures ?? 0;
   let lastResult = null;
-  let lastElement = null;
-  let model = null;
-  let modelName = null;
+  let lastElement = resume?.lastElement ?? null;
+  let model = resume?.model ?? null;
+  let modelName = resume?.modelName ?? null;
   let lastCallAt = 0;
 
   const finish = (status, extra = {}) => {
@@ -122,12 +141,32 @@ export async function runTask({
     onEvent({ type: 'finished', status: result.status, summary: result.summary, question: result.question });
     return result;
   };
+  // Everything needed to continue after Ruthvik answers (runner.js keeps it in memory).
+  const pause = (question, n, pending = null) =>
+    finish('waiting_user', {
+      question,
+      state: { entries, steps, collected, failures, lastElement, model, modelName, n, elapsedMs: Date.now() - started, ...pending }
+    });
   const record = (step) => {
     steps.push(step);
     onEvent({ type: 'step', step });
   };
 
-  if (startUrl) {
+  if (resume) {
+    // The question's call gets the answer as its result, so the model continues where it stopped.
+    const reply = { ok: true, answer: String(answer ?? '').slice(0, 1000) };
+    if (resume.pendingCall) {
+      entries.push({
+        action: { type: 'ask_user', question: resume.pendingCall.args?.question },
+        element: null,
+        outcome: `answered: ${reply.answer.slice(0, 80)}`,
+        modelContent: resume.pendingContent,
+        responses: [{ functionResponse: { name: 'ask_user', response: reply } }],
+        pageLine: resume.pageLine
+      });
+    }
+    lastResult = reply;
+  } else if (startUrl) {
     const checked = checkNavigation(startUrl, allowOrigins);
     if (!checked.ok) return finish('failed', { summary: `Can't start there: ${checked.reason}` });
     try {
@@ -140,7 +179,7 @@ export async function runTask({
   const system = buildAgentSystem(goal, kind);
   const declarations = stepDeclarationsFor(kind);
 
-  for (let n = 1; ; n++) {
+  for (let n = resume ? resume.n + 1 : 1; ; n++) {
     if (signal?.aborted) return finish('stopped', { summary: 'Stopped.' });
     if (n > BUDGET.steps) return finish('failed', { summary: `Stopped after ${BUDGET.steps} steps without finishing.` });
     if (Date.now() - started > BUDGET.ms) return finish('failed', { summary: 'Stopped: the 10-minute limit ran out.' });
@@ -159,7 +198,7 @@ export async function runTask({
     recentHashes.push(hash(pageText));
     if (recentHashes.length > STUCK_REPEATS) recentHashes.shift();
     if (recentHashes.length === STUCK_REPEATS && new Set(recentHashes).size === 1) {
-      return finish('waiting_user', { question: `I seem stuck on "${snap.title}". What should I do?` });
+      return pause(`I seem stuck on "${snap.title}". What should I do?`, n - 1);
     }
 
     // 2. Ask the model for one action (D8), paced for the free tier (D10).
@@ -171,14 +210,10 @@ export async function runTask({
     for (let attempt = 1; ; attempt++) {
       lastCallAt = Date.now();
       try {
-        if (!model) {
-          const first = await firstTurnWithFallback(system, contents, () => {}, { declarations, models: agentModels() });
-          model = first.model;
-          modelName = first.name;
-          turn = first.turn;
-        } else {
-          turn = await streamTurn(model, contents);
-        }
+        const r = await modelTurn({ system, contents, declarations, model });
+        turn = r.turn;
+        if (!model) modelName = r.name;
+        model = r.model;
         break;
       } catch (err) {
         if (attempt < 2 && isModelUnavailable(err) && !signal?.aborted) {
@@ -211,7 +246,15 @@ export async function runTask({
       return finish('done', { success: action.success !== false, summary: String(action.summary ?? '') });
     }
     if (action.type === 'ask_user') {
-      return finish('waiting_user', { question: String(action.question ?? 'What should I do next?') });
+      if (ignored.length) {
+        // extra calls in the same turn: answer them as ignored next to the reply (one response per call)
+        turn.content = { ...turn.content, parts: turn.content.parts.filter((p) => !p.functionCall || p.functionCall === call) };
+      }
+      return pause(String(action.question ?? 'What should I do next?'), n, {
+        pendingCall: call,
+        pendingContent: turn.content,
+        pageLine: `${snap.title} ${snap.url}`
+      });
     }
 
     // 4. Classify, then run / park / refuse.
