@@ -13,7 +13,7 @@ import { OWNER_NAME } from '../owner.js';
 import { takeSnapshot, renderSnapshot } from './snapshot.js';
 import { runAction, checkNavigation } from './actions.js';
 import { classifyStep } from './risk.js';
-import { buildAgentSystem, buildStepTurn } from './prompt.js';
+import { buildAgentSystem, buildStepTurn, findInjection } from './prompt.js';
 import { stepDeclarationsFor, toAction } from './declarations.js';
 
 export const BUDGET = { steps: 30, ms: 10 * 60_000, failures: 3 };
@@ -28,6 +28,13 @@ const agentModels = () =>
     : CHAT_MODELS;
 const sleep = (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
 const hash = (s) => createHash('sha1').update(s).digest('hex');
+const hostOf = (url) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return 'a page';
+  }
+};
 const quote = (s) => `"${String(s ?? '').slice(0, 50)}"`;
 
 /**
@@ -72,11 +79,11 @@ export function describeStep(action, element) {
 
 // Gemini contents for this step (D9). Only the newest page is sent in full; earlier pages are one
 // line each, and steps older than the window are summarised in PROGRESS.
-function buildContents(entries, pageText, lastResult) {
+function buildContents(entries, pageText, lastResult, warning = null) {
   const windowStart = Math.max(0, entries.length - HISTORY_WINDOW);
   const progress = entries.slice(0, windowStart).map((e) => `${describeStep(e.action, e.element)} → ${e.outcome}`);
   const recent = entries.slice(windowStart);
-  if (!recent.length) return [{ role: 'user', parts: [{ text: buildStepTurn(pageText, progress, lastResult) }] }];
+  if (!recent.length) return [{ role: 'user', parts: [{ text: buildStepTurn(pageText, progress, lastResult, warning) }] }];
 
   const contents = [{ role: 'user', parts: [{ text: `(earlier page: ${recent[0].pageLine})` }] }];
   recent.forEach((e, i) => {
@@ -86,7 +93,7 @@ function buildContents(entries, pageText, lastResult) {
       role: 'user',
       parts: [
         ...e.responses,
-        { text: isLast ? buildStepTurn(pageText, progress, lastResult) : `(earlier page: ${recent[i + 1].pageLine})` }
+        { text: isLast ? buildStepTurn(pageText, progress, lastResult, warning) : `(earlier page: ${recent[i + 1].pageLine})` }
       ]
     });
   });
@@ -129,6 +136,7 @@ export async function runTask({
   const entries = resume?.entries ?? [];
   const collected = resume?.collected ?? [];
   const recentHashes = [];
+  const warnings = resume?.warnings ?? []; // [{ url, text }] planted instructions seen on pages
   let failures = resume?.failures ?? 0;
   let lastResult = null;
   let lastElement = resume?.lastElement ?? null;
@@ -137,7 +145,12 @@ export async function runTask({
   let lastCallAt = 0;
 
   const finish = (status, extra = {}) => {
-    const result = { status, success: status === 'done', summary: '', question: null, ...extra, steps, collected, page, modelName };
+    const result = { status, success: status === 'done', summary: '', question: null, ...extra, steps, collected, page, modelName, warnings };
+    // Ruthvik always hears about planted instructions, whatever the model wrote.
+    if (warnings.length && result.summary && !/instruct|injection|suspicious|ignored/i.test(result.summary)) {
+      const w = warnings[0];
+      result.summary += ` Heads-up: ${hostOf(w.url)} had text trying to instruct the assistant ("${w.text.slice(0, 80)}"); I ignored it.`;
+    }
     onEvent({ type: 'finished', status: result.status, summary: result.summary, question: result.question });
     return result;
   };
@@ -145,7 +158,7 @@ export async function runTask({
   const pause = (question, n, pending = null) =>
     finish('waiting_user', {
       question,
-      state: { entries, steps, collected, failures, lastElement, model, modelName, n, elapsedMs: Date.now() - started, ...pending }
+      state: { entries, steps, collected, warnings, failures, lastElement, model, modelName, n, elapsedMs: Date.now() - started, ...pending }
     });
   const record = (step) => {
     steps.push(step);
@@ -195,6 +208,11 @@ export async function runTask({
       return finish('failed', { summary: `Couldn't read the page: ${String(err.message).split('\n')[0]}` });
     }
     const pageText = renderSnapshot(snap);
+    const planted = findInjection(snap.text);
+    if (planted && !warnings.some((w) => w.url === snap.url)) {
+      warnings.push({ url: snap.url, text: planted });
+      onEvent({ type: 'warning', url: snap.url, text: planted });
+    }
     recentHashes.push(hash(pageText));
     if (recentHashes.length > STUCK_REPEATS) recentHashes.shift();
     if (recentHashes.length === STUCK_REPEATS && new Set(recentHashes).size === 1) {
@@ -205,7 +223,7 @@ export async function runTask({
     await sleep(lastCallAt + intervalMs() - Date.now());
     if (signal?.aborted) return finish('stopped', { summary: 'Stopped.' });
     onEvent({ type: 'thinking', n });
-    const contents = buildContents(entries, pageText, lastResult);
+    const contents = buildContents(entries, pageText, lastResult, planted);
     let turn;
     for (let attempt = 1; ; attempt++) {
       lastCallAt = Date.now();
