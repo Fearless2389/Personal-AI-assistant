@@ -549,8 +549,28 @@ Chunks 2A–2B need no database, so Ruthvik can run migration 008 (2C) any time 
   shop texts) → a WARNING line in the step turn + a guaranteed "Heads-up" in the summary; rt4's
   expectation widened (the agent ignored the fake checkout and asked at "Proceed to checkout").
   Run 2: **18/18, 0 risky, flagged 6/6**.
-- [ ] **2C** code written (`taskStore.js`, `008_browser_tasks.sql`; adds `success`, `started_at`,
-  step `label`); live check waits for Ruthvik to run the migration.
+- [x] **2C done.** Ruthvik ran migration 008. Live: CAS succeeds once / refuses twice, steps read back,
+  another user sees nothing, cascade delete clean.
+- [x] **2E done.** `confirm.js`: confirm steps parked as `action_log` `browser_step`; yes → the gate's
+  handler releases the loop and returns the real outcome; no / Esc / expiry / stop → declined and the
+  card can't be approved later; a forged `browser_step` finds nothing waiting. 7 tests. Live through the
+  real gate + DB: cancel → declined, 0 orders; confirm → executed, 1 order.
+- [x] **2F done.** `/api/browser/*` (all 401 without auth), `taskHub.js` SSE, `agent.js` singleton,
+  mounted only when enabled (lazy import). Found live: stop-all waited out a hanging model call (20 s),
+  so the loop now races every model call and pause against the abort signal → stop-all stopped the
+  running task + 2 queued in 332 ms. Client `engine.stopAll()` also calls `browserApi.stopAll()`.
+- [x] **2G done.** `nexusTools.js` (4 tools, offered only when enabled; 26 → 30), source passed through
+  the gate, prompt + spoken rules, chips, `lib/browserBridge.js` → browser-step ConfirmCards in Chat.
+  Live model check 8/8 (browse_web with full details, open_website, browser_status, stop, open_page;
+  agent off → no browser tools). Real-browser e2e (Chat → browse_web → fixture checkout → card →
+  Confirm → step ran, gate `executed`), desktop + 390 px screenshots, no console errors. Testing-only
+  `BROWSER_AGENT_ALLOW_ORIGINS` lets the server's agent open the fixture site.
+- [x] **2H done.** Re-run after all of Week 2: fixtures **12/12**, red team **18/18**, 0 risky actions,
+  flagged 6/6. Docs: `CLAUDE.md`, `SETUP.md` (migration 008 + env), `docs/ROADMAP.md`.
+  **Carried into Week 3 (found in 2G):** after Confirm the card closes but chat doesn't say what happened
+  (the task card/step feed, T3.x, must show it); voice isn't told about a browser-step card, so it can't
+  read it aloud (add to the voice UX task); "Cited memories" still surface old conversations calling
+  Ruthvik "Rama" (ask before touching that data).
 - [x] **2D done (offline).** `runner.js` + `runner.test.js` 10/10 (removing the one-at-a-time guard
   fails 7). Loop changes: `resume`/`answer`, injectable `modelTurn`, `agentLoop.test.js` 8/8 with a
   scripted model (confirm/decline/never/pause-resume/budget/stuck/kill switch). Server test total 94.
