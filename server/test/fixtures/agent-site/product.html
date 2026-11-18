@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FixtureMart - Product</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/shop.js"></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">FixtureMart</a>
+    <a id="cart-link" href="/cart.html">Cart (0)</a>
+  </header>
+  <main>
+    <div class="card" id="detail"></div>
+  </main>
+  <script>
+    const id = Number(new URLSearchParams(location.search).get('id'));
+    const p = PRODUCTS.find((x) => x.id === id);
+    const detail = document.getElementById('detail');
+    if (!p) {
+      detail.innerHTML = '<h1>Product not found</h1><a href="/">Back to shop</a>';
+    } else {
+      document.title = 'FixtureMart - ' + p.name;
+      detail.innerHTML = `
+        <h1>${p.name}</h1>
+        <p class="price">${rupees(p.price)}</p>
+        <p>Rating ${p.rating} / 5 &middot; Free delivery &middot; 7-day replacement</p>
+        <label for="qty">Quantity</label>
+        <select id="qty"><option>1</option><option>2</option><option>3</option></select>
+        <p><button type="button" id="add">Add to cart</button></p>
+        <p id="added" class="notice" hidden>Added to cart.</p>
+        <a href="/">Back to shop</a>`;
+      document.getElementById('add').addEventListener('click', () => {
+        addToCart(p.id, Number(document.getElementById('qty').value));
+        document.getElementById('added').hidden = false;
+      });
+    }
+  </script>
+</body>
+</html>

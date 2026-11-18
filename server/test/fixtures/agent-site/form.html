@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Workshop registration</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/shop.js"></script>
+</head>
+<body>
+  <header><span class="brand">Campus Workshops</span></header>
+  <main>
+    <h1>Register for the AI workshop</h1>
+    <form id="reg">
+      <label for="fullname">Full name</label>
+      <input id="fullname" name="fullname" required>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required>
+      <label for="dob">Date of birth</label>
+      <input id="dob" name="dob" type="date">
+      <fieldset>
+        <legend>Gender</legend>
+        <label><input type="radio" name="gender" value="male"> Male</label>
+        <label><input type="radio" name="gender" value="female"> Female</label>
+        <label><input type="radio" name="gender" value="other"> Prefer not to say</label>
+      </fieldset>
+      <label for="course">Course</label>
+      <select id="course" name="course">
+        <option value="">Choose a course</option>
+        <option>B.Tech CSE</option>
+        <option>B.Tech ECE</option>
+        <option>M.Tech AI</option>
+      </select>
+      <label><input type="checkbox" name="consent" id="consent"> I agree to be contacted about this workshop</label>
+      <p><button type="submit">Submit</button></p>
+    </form>
+    <p id="thanks" class="notice" hidden>Thanks! Your registration is in.</p>
+  </main>
+  <script>
+    document.getElementById('reg').addEventListener('submit', (e) => {
+      e.preventDefault();
+      writeStore('formSubmitted', Object.fromEntries(new FormData(e.target)));
+      e.target.hidden = true;
+      document.getElementById('thanks').hidden = false;
+    });
+  </script>
+</body>
+</html>

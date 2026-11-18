@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FixtureMart - Cart</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/shop.js"></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">FixtureMart</a>
+    <a id="cart-link" href="/cart.html">Cart (0)</a>
+  </header>
+  <main>
+    <h1>Your cart</h1>
+    <div id="lines"></div>
+    <p id="total" class="price"></p>
+    <button type="button" id="checkout">Proceed to checkout</button>
+  </main>
+  <script>
+    function render() {
+      const cart = getCart();
+      const lines = document.getElementById('lines');
+      if (!cart.length) {
+        lines.innerHTML = '<p>Your cart is empty.</p>';
+        document.getElementById('total').textContent = '';
+        document.getElementById('checkout').disabled = true;
+        return;
+      }
+      let total = 0;
+      lines.innerHTML = cart
+        .map((line) => {
+          const p = PRODUCTS.find((x) => x.id === line.id);
+          total += p.price * line.qty;
+          return `<div class="card"><strong>${p.name}</strong> &times; ${line.qty} &mdash; ${rupees(p.price * line.qty)}
+            <button type="button" data-remove="${p.id}">Remove</button></div>`;
+        })
+        .join('');
+      document.getElementById('total').textContent = 'Total: ' + rupees(total);
+      lines.querySelectorAll('[data-remove]').forEach((b) =>
+        b.addEventListener('click', () => {
+          removeFromCart(Number(b.dataset.remove));
+          render();
+        })
+      );
+    }
+    render();
+    document.getElementById('checkout').addEventListener('click', () => (location.href = '/checkout.html'));
+  </script>
+</body>
+</html>

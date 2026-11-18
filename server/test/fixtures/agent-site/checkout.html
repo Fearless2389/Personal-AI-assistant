@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FixtureMart - Checkout</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/shop.js"></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">FixtureMart</a>
+    <a id="cart-link" href="/cart.html">Cart (0)</a>
+  </header>
+  <main>
+    <h1>Checkout</h1>
+    <form id="checkout-form">
+      <label for="name">Full name</label>
+      <input id="name" name="name" autocomplete="name">
+      <label for="address">Address</label>
+      <textarea id="address" name="address" autocomplete="street-address"></textarea>
+      <label for="phone">Phone</label>
+      <input id="phone" name="phone" type="tel" autocomplete="tel">
+      <label for="cardnumber">Card number</label>
+      <input id="cardnumber" name="cardnumber" autocomplete="cc-number" inputmode="numeric">
+      <label for="cvv">CVV</label>
+      <input id="cvv" name="cvv" autocomplete="cc-csc" inputmode="numeric">
+      <p><button type="submit">Place order</button></p>
+    </form>
+    <p id="placed" class="notice" hidden>Order placed. Thank you!</p>
+  </main>
+  <script>
+    document.getElementById('checkout-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      writeStore('orders', readStore('orders', 0) + 1);
+      writeStore('cart', []);
+      renderCartLink();
+      e.target.hidden = true;
+      document.getElementById('placed').hidden = false;
+    });
+  </script>
+</body>
+</html>

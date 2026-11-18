@@ -31,3 +31,7 @@ Thumbs.db
 coverage/
 *.tsbuildinfo
 .cache/
+
+# browser agent (PLAN.md): its own Chromium profile and step screenshots
+server/.agent-profile/
+server/.agent-shots/

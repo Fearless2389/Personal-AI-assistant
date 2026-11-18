@@ -1,0 +1,16 @@
+body { font-family: system-ui, sans-serif; margin: 0; color: #1d1d1f; background: #fafafa; }
+header { display: flex; gap: 16px; align-items: center; padding: 12px 24px; background: #232f3e; color: #fff; }
+header a { color: #fff; }
+header .brand { font-weight: 700; font-size: 18px; margin-right: auto; }
+main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
+.price { font-weight: 700; }
+.toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+label { display: block; margin: 10px 0 4px; }
+input, select, textarea { padding: 6px; font-size: 14px; }
+button { padding: 8px 14px; font-size: 14px; cursor: pointer; }
+.slot[aria-pressed='true'] { background: #232f3e; color: #fff; }
+.notice { padding: 12px; background: #e7f6e7; border: 1px solid #9c9; border-radius: 6px; }
+table { border-collapse: collapse; }
+td, th { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }

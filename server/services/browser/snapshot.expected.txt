@@ -1,0 +1,15 @@
+URL: http://fixture/form.html
+TITLE: Workshop registration
+SCROLL: 0 of 800 px (0%)
+ELEMENTS (visible, interactive):
+[1] textbox "Full name" value=""
+[2] textbox "Email" value=""
+[3] textbox "Date of birth" value=""
+[4] radio "Male" checked=false
+[5] radio "Female" checked=false
+[6] radio "Prefer not to say" checked=false
+[7] combobox "Course" value="Choose a course" options=Choose a course|B.Tech CSE|B.Tech ECE|M.Tech AI
+[8] checkbox "I agree to be contacted about this workshop" checked=false
+[9] button "Submit"
+TEXT (visible, may be cut):
+Campus Workshops Register for the AI workshop Full name Email Date of birth Gender Male Female Prefer not to say Course I agree to be contacted about this workshop Submit

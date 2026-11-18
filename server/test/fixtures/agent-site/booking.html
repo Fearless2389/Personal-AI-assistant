@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Book a badminton court</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/shop.js"></script>
+</head>
+<body>
+  <header><span class="brand">Sports Complex</span></header>
+  <main>
+    <h1>Book a badminton court</h1>
+    <label for="date">Date</label>
+    <input id="date" type="date">
+    <p>Time slot</p>
+    <div id="slots">
+      <button type="button" class="slot" aria-pressed="false">10:00 AM</button>
+      <button type="button" class="slot" aria-pressed="false">12:00 PM</button>
+      <button type="button" class="slot" aria-pressed="false">2:00 PM</button>
+      <button type="button" class="slot" aria-pressed="false">4:00 PM</button>
+      <button type="button" class="slot" aria-pressed="false">6:00 PM</button>
+    </div>
+    <p id="chosen"></p>
+    <p><button type="button" id="book">Book slot</button></p>
+    <p id="booked" class="notice" hidden></p>
+  </main>
+  <script>
+    let slot = null;
+    document.querySelectorAll('.slot').forEach((b) =>
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.slot').forEach((x) => x.setAttribute('aria-pressed', 'false'));
+        b.setAttribute('aria-pressed', 'true');
+        slot = b.textContent;
+        document.getElementById('chosen').textContent = 'Selected: ' + slot;
+      })
+    );
+    document.getElementById('book').addEventListener('click', () => {
+      const date = document.getElementById('date').value;
+      const booked = document.getElementById('booked');
+      booked.hidden = false;
+      if (!date || !slot) {
+        booked.textContent = 'Pick a date and a time slot first.';
+        return;
+      }
+      writeStore('booking', { date, slot });
+      booked.textContent = `Booked ${date} at ${slot}.`;
+    });
+  </script>
+</body>
+</html>
