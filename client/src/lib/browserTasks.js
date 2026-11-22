@@ -79,7 +79,7 @@ export async function catchUp(since) {
   const { tasks } = await browserApi.list(8);
   for (const t of tasks) {
     const known = get().tasks[t.id];
-    if (known && known.seenAt > since) continue;
+    if (known && known.seenAt >= since) continue; // an event in the same millisecond as `ready` is still newer
     set((s) => ({ tasks: { ...s.tasks, [t.id]: { ...t, seenAt: since } } }));
     if (FINAL.has(t.status)) closeBrowserCards(t.id);
   }
