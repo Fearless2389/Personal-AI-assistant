@@ -1,14 +1,12 @@
-// Browser-agent events → the UI (PLAN.md chunk 2G). Listens to GET /api/browser/events while
-// signed in. A risky step the agent parked arrives as `needs_confirmation`; it becomes a normal
-// ConfirmCard (lib/confirmations.js), so a tap or a spoken yes approves it through the gate like
-// any other action. When a task ends, its leftover cards close. 404 = the agent is not enabled on
-// the server: stop quietly. (Week 3 adds the task card, step feed and Agent page on top.)
+// Browser-agent events → the UI. Listens to GET /api/browser/events while signed in and hands each
+// event to lib/browserTasks.js (task store + ConfirmCards). On every (re)connect, the server's
+// `ready` event triggers a catch-up read, so a reload or a server restart never leaves a stale strip.
+// 404 = the agent is not enabled on the server: stop quietly.
 import { streamBrowserEvents } from './api.js';
-import { trackBrowserStep, closeBrowserCards } from './confirmations.js';
+import { applyBrowserEvent, catchUp } from './browserTasks.js';
 
 const RETRY_MIN_MS = 2_000;
 const RETRY_MAX_MS = 30_000;
-const FINAL = new Set(['done', 'failed', 'stopped']);
 
 const sleep = (ms, signal) =>
   new Promise((resolve) => {
@@ -17,11 +15,11 @@ const sleep = (ms, signal) =>
   });
 
 export function handleBrowserEvent(e) {
-  if (e.type === 'needs_confirmation' && e.confirmation_id) {
-    trackBrowserStep({ id: e.confirmation_id, summary: e.summary, taskId: e.taskId });
-  } else if (e.type === 'finished' || (e.type === 'task' && FINAL.has(e.task?.status))) {
-    closeBrowserCards(e.taskId ?? e.task?.id);
+  if (e.type === 'ready') {
+    catchUp(Date.now()).catch((err) => console.warn('[browser] catch-up failed:', err.message));
+    return;
   }
+  applyBrowserEvent(e);
 }
 
 async function listen(signal) {

@@ -43,11 +43,9 @@ export function closeBrowserCards(taskId) {
   }
 }
 
-/** Browser-step cards still waiting (shown in chat next to the session's own). */
-export const browserWaitingIds = (confirmations) =>
-  Object.values(confirmations)
-    .filter((c) => c.origin === 'browser' && isWaiting(c))
-    .map((c) => c.id);
+/** The card of a browser task's step that waits for a yes (its id), or null. */
+export const browserCardFor = (confirmations, taskId) =>
+  Object.values(confirmations).find((c) => c.origin === 'browser' && c.taskId === taskId && isWaiting(c))?.id ?? null;
 
 /**
  * Apply a resolve outcome ({ id, tool, status, ok, error, result }) from a tap or

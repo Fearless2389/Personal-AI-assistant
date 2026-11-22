@@ -13,7 +13,10 @@ import { Badge } from '../components/ui/Badge.jsx';
 import { formatRelative } from '../lib/utils.js';
 import { ConfirmCard } from '../components/shared/ConfirmCard.jsx';
 import { useConfirmStore } from '../store/useConfirmStore.js';
-import { isWaiting, browserWaitingIds } from '../lib/confirmations.js';
+import { isWaiting } from '../lib/confirmations.js';
+import { TaskCard } from '../components/browser/TaskCard.jsx';
+import { useBrowserStore, selectLive } from '../store/useBrowserStore.js';
+import { dismissNotice } from '../lib/browserTasks.js';
 import { OWNER_NAME } from '../lib/owner.js';
 
 const SUGGESTIONS = [
@@ -33,10 +36,12 @@ export default function Chat() {
     () => toolResults.filter((r) => r.result?.needs_confirmation).map((r) => r.result.confirmation_id),
     [toolResults]
   );
-  // …plus risky steps of a browser task (they arrive over the browser event stream).
-  const waitingIds = [...new Set([...parkedIds, ...browserWaitingIds(confirmations)])].filter((id) =>
-    isWaiting(confirmations[id])
-  );
+  const waitingIds = parkedIds.filter((id) => isWaiting(confirmations[id]));
+  // The browser task that's running or waiting on Ruthvik (its risky step's card is inside it), or
+  // the one that just ended until dismissed. Elsewhere the AgentStrip shows this instead.
+  const liveTask = useBrowserStore(selectLive);
+  const noticeId = useBrowserStore((s) => s.notice);
+  const browserTaskId = liveTask?.id ?? noticeId;
   const location = useLocation();
   const navigate = useNavigate();
   // Prompts handed over from elsewhere (e.g. a nudge's "Prep plan") arrive via
@@ -135,6 +140,11 @@ export default function Chat() {
         {/* Composer */}
         <div className="px-4 md:px-8 pb-5 pt-2">
           <div className="max-w-3xl mx-auto">
+            {browserTaskId && (
+              <div className="mb-2">
+                <TaskCard taskId={browserTaskId} onDismiss={dismissNotice} />
+              </div>
+            )}
             {waitingIds.length > 0 && (
               <div className="mb-2 space-y-1.5">
                 {waitingIds.map((id) => (

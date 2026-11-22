@@ -7,6 +7,7 @@ import { useCommandBar } from '../../store/useCommandBar.js';
 import { Button } from '../ui/Button.jsx';
 import { VoiceOrb } from '../voice/VoiceOrb.jsx';
 import { startBrowserBridge } from '../../lib/browserBridge.js';
+import { AgentStrip } from '../browser/AgentStrip.jsx';
 
 const TITLES = {
   '/dashboard': 'Today',
@@ -29,7 +30,7 @@ export function TopBar() {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // Browser-agent events (risky-step cards) while signed in; no-op when the agent is off.
+  // Browser-agent events (tasks, questions, risky-step cards) while signed in; no-op when the agent is off.
   useEffect(() => startBrowserBridge(), []);
 
   useEffect(() => {
@@ -95,6 +96,7 @@ export function TopBar() {
           )}
         </div>
       </div>
+      <AgentStrip />
     </header>
   );
 }
