@@ -65,6 +65,7 @@ function ensureAudio() {
     player = new PcmPlayer({
       onIdle: () => {
         if (get().status === 'speaking') setStatus('ready');
+        flushBrowserNews(); // browser-agent news held while Nexus was speaking
       }
     });
   }
@@ -245,6 +246,27 @@ export async function confirmByTap(id, decision) {
   );
 }
 
+// ---- browser agent ----------------------------------------------------------------
+// The agent needs Ruthvik (a risky step, a question) or finished: if a voice session is open, Nexus
+// says so. News that arrives while Ruthvik is talking or Nexus is answering waits for the end of that
+// turn (one slot: newer news replaces older). Without an open session the AgentStrip shows it.
+const BROWSER_NEWS_TTL_MS = 2 * 60_000;
+let browserNews = null; // { cue, text, at }
+
+export function tellBrowserNews(news) {
+  if (!news || !session?.ready) return;
+  browserNews = { ...news, at: Date.now() };
+  flushBrowserNews();
+}
+
+function flushBrowserNews() {
+  if (!browserNews || !session?.ready || talking || toolTurnOpen) return;
+  if (['thinking', 'speaking', 'listening'].includes(get().status)) return;
+  const { cue, text, at } = browserNews;
+  browserNews = null;
+  if (Date.now() - at <= BROWSER_NEWS_TTL_MS) tellModel(cue, text);
+}
+
 /** Send a non-spoken cue to the model as its own turn, so its reply is shown under it. */
 function tellModel(cue, text) {
   if (!session?.ready || talking) return;
@@ -417,6 +439,7 @@ function handlersFor(self) {
       if (findTurn(answerId)?.said) persistTurn(answerId);
       if (!talking && get().status === 'thinking') setStatus('ready');
       backstopSpokenAnswer(answerId);
+      flushBrowserNews();
     },
     onResumeHandle(handle) {
       if (live()) resume = { handle, at: Date.now() };

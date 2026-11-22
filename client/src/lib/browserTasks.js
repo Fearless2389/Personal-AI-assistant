@@ -4,6 +4,8 @@
 import { useBrowserStore, FINAL } from '../store/useBrowserStore.js';
 import { browserApi, actionsApi } from './api.js';
 import { trackBrowserStep, closeBrowserCards } from './confirmations.js';
+import { tellBrowserNews } from './voice/engine.js';
+import { browserCue } from './voice/browserCues.js';
 
 const set = useBrowserStore.setState;
 const get = useBrowserStore.getState;
@@ -38,8 +40,13 @@ function showNotice(id) {
   set({ notice: id });
 }
 
-/** One event from GET /api/browser/events. */
+/** One event from GET /api/browser/events (live only: a catch-up read is never spoken). */
 export function applyBrowserEvent(e) {
+  applyToStore(e);
+  tellBrowserNews(browserCue(e, get().tasks[e.taskId])); // voice, if a session is open
+}
+
+function applyToStore(e) {
   switch (e.type) {
     case 'task':
       patchTask(e.task.id, e.task);
