@@ -87,6 +87,8 @@ function setup(extra = {}) {
     },
     hub: { emit: (userId, e) => events.push(e) },
     log: { warn() {}, error() {} },
+    shoot: async () => null, // no disk in these tests
+    sweep: async () => 0,
     ...extra
   });
   const statusOf = (id) => store.tasks.find((t) => t.id === id).status;
@@ -203,6 +205,8 @@ test('steps are saved and fanned out; a crash in the loop fails the task and the
     store,
     hub: { emit: (u, e) => events.push(e) },
     log: { warn() {}, error() {} },
+    shoot: async () => null,
+    sweep: async () => 0,
     openPage: async () => ({ close: async () => {} }),
     run: async (opts) => {
       calls++;
@@ -230,4 +234,26 @@ test('recover stops tasks a restart left open', async () => {
   await runner.startTask(U, { goal: 'B', source: 'chat' });
   assert.equal(await runner.recover(), 2);
   assert.ok(store.tasks.every((t) => t.status === 'stopped'));
+});
+
+test('a risky step is screenshotted before it waits for a yes; the step and the end carry the shot', async () => {
+  const shots = [];
+  let decided = null;
+  const { runner, store, events } = setup({
+    shoot: async (page, taskId, name) => (shots.push(name), String(name)),
+    decideFor: () => async (step) => ((decided = step), 'execute'),
+    run: async (opts) => {
+      const step = { n: 3, action: 'click', label: 'click "Buy Now"', url: 'https://shop.example/p' };
+      await opts.decide(step, { risk: 'confirm', reason: 'buys' });
+      opts.onEvent({ type: 'step', step: { ...step, risk: 'confirm', status: 'done' } });
+      return { status: 'done', success: true, summary: 'ok', steps: [step], collected: [], page: opts.page };
+    }
+  });
+  const { task } = await runner.startTask(U, { goal: 'A', source: 'chat' });
+  await tick();
+  assert.deepEqual(shots, [3, 'final']);
+  assert.equal(decided.shot_path, '3'); // the parked card can show what's being approved
+  assert.equal(store.steps[0].shot_path, '3');
+  assert.equal(events.find((e) => e.type === 'step').step.shot_path, '3');
+  assert.equal(events.find((e) => e.type === 'finished' && e.taskId === task.id).shot, 'final');
 });

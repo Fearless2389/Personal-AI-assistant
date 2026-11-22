@@ -52,7 +52,15 @@ export function makeDecide({
       row = await log.insertAction(userId, {
         source: task.source,
         tool: 'browser_step',
-        args: { task_id: task.id, n: step.n, action: step.action, target: step.target, url: step.url, label: step.label },
+        args: {
+          task_id: task.id,
+          n: step.n,
+          action: step.action,
+          target: step.target,
+          url: step.url,
+          label: step.label,
+          shot: step.shot_path ?? null // screenshot of the page it's about to act on (shots.js)
+        },
         risk: 'confirm',
         status: 'awaiting_confirmation',
         summary

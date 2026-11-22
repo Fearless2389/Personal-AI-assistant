@@ -12,6 +12,7 @@ import * as taskStore from './taskStore.js';
 import { runTask } from './agentLoop.js';
 import { newPage } from './driver.js';
 import { makeDecide, reportStep } from './confirm.js';
+import { takeShot, sweepShots } from './shots.js';
 
 export const MAX_QUEUE = 5;
 export const ANSWER_TIMEOUT_MS = 15 * 60_000;
@@ -25,6 +26,8 @@ export function createRunner({
   // Confirm steps: parked in action_log and decided through the gate (confirm.js).
   decideFor = (userId, task, slot) => makeDecide({ userId, task, signal: slot.abort.signal, store, hub }),
   allowOrigins = [], // the local fixture site, for live checks only
+  shoot = takeShot, // screenshots before a risky step and at the end (shots.js)
+  sweep = sweepShots,
   answerTimeoutMs = ANSWER_TIMEOUT_MS,
   maxQueue = MAX_QUEUE,
   log = console
@@ -57,12 +60,13 @@ export function createRunner({
   }
 
   async function finalize(userId, slot, status, patch) {
+    const shot = slot.page ? await shoot(slot.page, slot.id, 'final') : null; // what it left behind
     const task = await store.setStatus(userId, slot.id, ACTIVE, status, patch).catch((err) => {
       log.error('[browser] could not save the final status:', err.message);
       return null;
     });
     await closeSlot(userId, slot);
-    emit(userId, { type: 'finished', taskId: slot.id, status, summary: patch.summary ?? null });
+    emit(userId, { type: 'finished', taskId: slot.id, status, summary: patch.summary ?? null, shot });
     if (task) emit(userId, { type: 'task', task });
     pump(userId);
   }
@@ -79,7 +83,7 @@ export function createRunner({
         startUrl: resume ? null : task.start_url,
         signal: slot.abort.signal,
         allowOrigins,
-        decide: decideFor(userId, task, slot),
+        decide: withShot(slot, decideFor(userId, task, slot)),
         resume,
         answer,
         onEvent: (event) => onLoopEvent(userId, slot, event)
@@ -111,9 +115,18 @@ export function createRunner({
     });
   }
 
+  // A risky step: screenshot the page first, so the card shows what Ruthvik is approving.
+  const withShot = (slot, decide) => async (step, classification) => {
+    const shot = await shoot(slot.page, slot.id, step.n);
+    if (!shot) return decide(step, classification);
+    slot.shots.set(step.n, shot);
+    return decide({ ...step, shot_path: shot }, classification);
+  };
+
   function onLoopEvent(userId, slot, event) {
     if (event.type !== 'step') return;
-    const step = event.step;
+    const shot = slot.shots.get(event.step.n);
+    const step = shot ? { ...event.step, shot_path: shot } : event.step;
     reportStep(userId, slot.id, step); // a step that waited on the gate: tell it what happened
     slot.steps += 1;
     store
@@ -133,7 +146,7 @@ export function createRunner({
         if (!next) return;
         const task = await store.setStatus(userId, next.id, 'queued', 'running');
         if (!task) continue; // stopped meanwhile: try the next one
-        const slot = { id: task.id, abort: new AbortController(), page: null, state: null, timer: null, steps: 0 };
+        const slot = { id: task.id, abort: new AbortController(), page: null, state: null, timer: null, steps: 0, shots: new Map() };
         u.active = slot;
         emit(userId, { type: 'task', task });
         drive(userId, slot, task);
@@ -212,6 +225,8 @@ export function createRunner({
   async function recover() {
     const n = await store.stopOrphans('Server restarted');
     if (n) log.warn(`[browser] stopped ${n} task(s) left open by a restart`);
+    const swept = await sweep().catch(() => 0);
+    if (swept) log.info?.(`[browser] removed screenshots of ${swept} task(s) older than 7 days`);
     return n;
   }
 

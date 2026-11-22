@@ -7,6 +7,7 @@ import { openForLogin } from '../services/browser/driver.js';
 import { checkNavigation, testOrigins } from '../services/browser/urlPolicy.js';
 import { KINDS } from '../services/browser/prompt.js';
 import { OWNER_NAME } from '../services/owner.js';
+import { shotFile } from '../services/browser/shots.js';
 
 // The browser agent's API (PLAN.md T2.3, chunk 2F). Mounted only when BROWSER_AGENT_ENABLED=1.
 // Thin: validation here, everything else in services/browser/runner.js.
@@ -57,6 +58,27 @@ router.get('/tasks/:id', requireAuth, (req, res, next) => {
     if (!task) return res.status(404).json({ error: 'Task not found' });
     res.json({ task });
   }, fail(res, next));
+});
+
+/**
+ * GET /api/browser/tasks/:id/shots/:name → image/jpeg (name = a step number or "final"). Only the
+ * task's owner gets it; anything else, or a screenshot that doesn't exist, is a 404.
+ */
+router.get('/tasks/:id/shots/:name', requireAuth, async (req, res, next) => {
+  if (!validId(req, res)) return;
+  const file = shotFile(req.params.id, req.params.name);
+  if (!file) return res.status(404).json({ error: 'Screenshot not found' });
+  try {
+    const task = await taskStore.getTask(req.user.id, req.params.id);
+    if (!task) return res.status(404).json({ error: 'Screenshot not found' });
+    res.set('cache-control', 'private, max-age=3600');
+    // dotfiles: the folder is server/.agent-shots; `file` is already pinned to a uuid + name (shotFile)
+    res.sendFile(file, { dotfiles: 'allow' }, (err) => {
+      if (err && !res.headersSent) res.status(404).json({ error: 'Screenshot not found' });
+    });
+  } catch (err) {
+    fail(res, next)(err);
+  }
 });
 
 /** POST /api/browser/tasks/:id/stop → { task }. */
