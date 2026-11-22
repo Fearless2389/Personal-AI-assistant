@@ -88,8 +88,13 @@ Personal AI second-brain. Read `docs/PRD.md` for product intent, `SETUP.md` for 
   stop/stop-all, `ask_user` pause → `answerTask` resume, 15-min answer timeout, crash recovery; persists via
   `taskStore.js` (migration 008), events via `taskHub.js` (SSE `GET /api/browser/events`). Confirm steps go
   through the normal gate (`confirm.js`): parked as `action_log` tool `browser_step`; only a step the loop is
-  still waiting on can run. Client: `lib/browserBridge.js` turns `needs_confirmation` events into ConfirmCards
-  (shown in Chat); Esc/`engine.stopAll` also calls `POST /api/browser/stop-all`. Nexus tools in `nexusTools.js`
+  still waiting on can run. Client: `lib/browserBridge.js` (SSE; on every `ready` a catch-up read) →
+  `lib/browserTasks.js` → `store/useBrowserStore.js`; a waiting step is a ConfirmCard (`confirmations.js#browserCardFor`).
+  `components/browser/AgentStrip.jsx` (under the top bar, every page but Chat) shows a question, a risky step or a
+  just-finished task; Chat pins `TaskCard` instead (no duplicate). Voice: `lib/voice/browserCues.js` → `engine.tellBrowserNews`
+  speaks only needs_confirmation / question / finished, held while Nexus talks. Screenshots (`shots.js`): before a
+  risky step and the last page, `GET /api/browser/tasks/:id/shots/:name` (owner only), swept after 7 days.
+  Esc/`engine.stopAll` also calls `POST /api/browser/stop-all`. Nexus tools in `nexusTools.js`
   (light file; the runner loads lazily). Evals: `npm run agent:eval [-- --suite redteam]` on the fixture site
   (`server/test/fixtures/agent-site`), results appended to `docs/agent-evals.md`.
 - **Dates are answered by query, not vectors.** `services/agenda.js` (`listUpcoming`) merges tasks,

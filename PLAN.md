@@ -762,6 +762,21 @@ Demo from chat: start a fixture errand, confirm/cancel in the ConfirmCard, Esc s
 
 UI tasks follow the `quality-pass` skill's Ship Gate. Wireframes below are part of the plan review.
 
+**Re-planned 22 Nov (approved by Ruthvik), done early:** real use showed the agent's questions reached no
+screen (the sign-in question sat unseen until a restart stopped the task), so the order changed:
+1. **3A done** — "agent needs you" strip under the top bar on every page (question + quick replies, ConfirmCard
+   + Stop task, finished notice that fades after 8 s → View), TaskCard + StepFeed pinned in Chat instead,
+   catch-up read on every stream `ready` so a reload/restart shows the truth ("Stopped · Server restarted").
+   Mocked Playwright check (`scratchpad/audit/strip-ui-check.mjs`): 1280 + 390, console clean, all pass.
+2. **3B done (T3.4)** — voice speaks needs_confirmation / question / finished (`browserCues.js`), held while
+   Nexus is talking. Live Gemini Live check 2/2 runs: readback "…Should I go ahead?", spoken yes →
+   resolve_pending_action, reply → answer_browser_task; in-app check with a mocked Live socket.
+3. **3C done (T3.2 narrowed)** — screenshots only before a risky step and of the last page (not every step).
+   Route owner-only (401/404 checked), e2e on the fixture checkout with real Gemini.
+- **T3.3 Agent page postponed** until 3A–3C have been used for a while (Ruthvik, 22 Nov).
+- Found on the way: every voice turn failed to save since voice shipped (`conversations.session_id` was UUID,
+  voice ids are `voice-<uuid>`) → migration 009 (Ruthvik runs it).
+
 #### Day 13 — Mon 30 Nov · Task card + live store
 
 - [ ] **T3.1 `useBrowserStore` + `TaskCard` + `StepFeed`.**

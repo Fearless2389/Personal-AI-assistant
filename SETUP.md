@@ -30,6 +30,7 @@ Supabase and Google Cloud consoles.
    - `supabase/migrations/006_action_log.sql` — what Nexus did + the confirmation gate
    - `supabase/migrations/007_action_undo.sql` — undo for actions on your own data
    - `supabase/migrations/008_browser_tasks.sql` — browser-agent tasks and steps (only needed for the browser agent)
+   - `supabase/migrations/009_voice_session_ids.sql` — lets voice conversations be saved (without it every voice turn fails to save)
 
    > **Free-tier gotcha:** Supabase pauses a project after ~7 days with no activity. If the app
    > suddenly can't log in and the server logs `fetch failed`, open the dashboard and click
