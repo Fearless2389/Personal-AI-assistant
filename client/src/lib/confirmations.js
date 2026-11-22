@@ -30,10 +30,13 @@ export function trackParked(result) {
   return true;
 }
 
-/** A risky browser-agent step is waiting (from the browser event stream, not a tool result). */
-export function trackBrowserStep({ id, summary, taskId }) {
+/**
+ * A risky browser-agent step is waiting (from the browser event stream, not a tool result).
+ * `shot` names the screenshot of the page it's about to act on (server shots.js), if any.
+ */
+export function trackBrowserStep({ id, summary, taskId, shot = null }) {
   if (get().confirmations[id]) return;
-  patch(id, { summary, status: 'awaiting_confirmation', error: null, origin: 'browser', taskId });
+  patch(id, { summary, status: 'awaiting_confirmation', error: null, origin: 'browser', taskId, shot });
 }
 
 /** A browser task ended: its cards that still wait can't be approved any more. */

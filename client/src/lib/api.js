@@ -109,7 +109,14 @@ export const browserApi = {
   stop: (id) => request(`/api/browser/tasks/${id}/stop`, { method: 'POST' }),
   stopAll: () => request('/api/browser/stop-all', { method: 'POST' }),
   answer: (id, text) => request(`/api/browser/tasks/${id}/answer`, { method: 'POST', body: { text } }),
-  openForLogin: (url) => request('/api/browser/open', { method: 'POST', body: { url } })
+  openForLogin: (url) => request('/api/browser/open', { method: 'POST', body: { url } }),
+  /** A task's screenshot ("3" or "final") as a Blob, or null when there is none. */
+  shot: async (id, name) => {
+    const res = await fetch(`${BASE}/api/browser/tasks/${id}/shots/${name}`, { headers: await authHeaders() });
+    if (res.status === 404) return null;
+    if (!res.ok) throw Object.assign(new Error(`screenshot ${res.status}`), { status: res.status });
+    return res.blob();
+  }
 };
 
 export const habitsApi = {

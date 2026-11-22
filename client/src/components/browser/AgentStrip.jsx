@@ -16,6 +16,7 @@ import { Button } from '../ui/Button.jsx';
 import { Badge } from '../ui/Badge.jsx';
 import { Modal } from '../ui/Modal.jsx';
 import { QuestionReply } from './QuestionReply.jsx';
+import { StepShot } from './StepShot.jsx';
 import { TaskCard } from './TaskCard.jsx';
 import { hostOf, taskStatusMeta } from '../../lib/browserFormat.js';
 import { cn } from '../../lib/utils.js';
@@ -83,6 +84,7 @@ export function AgentStrip() {
   const live = useBrowserStore(selectLive);
   const notice = useBrowserStore((s) => (s.notice ? s.tasks[s.notice] : null));
   const cardId = useConfirmStore((s) => (live ? browserCardFor(s.confirmations, live.id) : null));
+  const cardShot = useConfirmStore((s) => (cardId ? s.confirmations[cardId]?.shot : null));
   const [viewing, setViewing] = useState(null);
   const [expanded, setExpanded] = useState(false); // a long question: tap to read all of it
 
@@ -123,7 +125,12 @@ export function AgentStrip() {
     );
   } else if (cardId) {
     body = (
-      <ConfirmCard id={cardId} hint='or say "yes"' extra={<StopButton taskId={live.id} label="Stop task" />} />
+      <ConfirmCard
+        id={cardId}
+        hint='or say "yes"'
+        extra={<StopButton taskId={live.id} label="Stop task" />}
+        media={cardShot && <StepShot taskId={live.id} name={cardShot} label="The page it's about to act on" />}
+      />
     );
   } else if (notice) {
     urgent = false;

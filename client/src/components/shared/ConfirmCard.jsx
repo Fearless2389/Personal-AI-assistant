@@ -2,7 +2,7 @@
 // "Add 'Uber OA' to your Google Calendar on …"). Confirm / Cancel here, or answer
 // in words. Once decided it stays as a one-line record of what happened.
 // onDecide defaults to a plain tap; voice passes one that also tells Nexus. `extra` adds a button to
-// the row (the agent strip's "Stop task").
+// the row (the agent strip's "Stop task"); `media` shows something above the buttons (a screenshot).
 import { ShieldCheck } from 'lucide-react';
 import { useConfirmStore } from '../../store/useConfirmStore.js';
 import { isWaiting, resolveByTap } from '../../lib/confirmations.js';
@@ -11,7 +11,7 @@ import { Badge } from '../ui/Badge.jsx';
 import { Button } from '../ui/Button.jsx';
 import { cn } from '../../lib/utils.js';
 
-export function ConfirmCard({ id, onDecide = resolveByTap, hint = 'or say "yes"', extra = null }) {
+export function ConfirmCard({ id, onDecide = resolveByTap, hint = 'or say "yes"', extra = null, media = null }) {
   const c = useConfirmStore((s) => s.confirmations[id]);
   if (!c) return null;
   const waiting = isWaiting(c);
@@ -40,6 +40,7 @@ export function ConfirmCard({ id, onDecide = resolveByTap, hint = 'or say "yes"'
         </Badge>
       </div>
       {c.error && <p className="mt-1.5 ml-6 text-xs text-danger">{c.error}</p>}
+      {media && waiting && <div className="mt-2 ml-6">{media}</div>}
       {waiting && (
         <div className="mt-2 ml-6 flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => onDecide(id, 'confirm')}>

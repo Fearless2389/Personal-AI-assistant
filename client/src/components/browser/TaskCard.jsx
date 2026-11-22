@@ -8,7 +8,7 @@
 // Chat shows it pinned above the composer; the AgentStrip's "View" opens it in a modal.
 import { useEffect, useState } from 'react';
 import { Globe, X } from 'lucide-react';
-import { useBrowserStore, LIVE } from '../../store/useBrowserStore.js';
+import { useBrowserStore, LIVE, FINAL } from '../../store/useBrowserStore.js';
 import { useConfirmStore } from '../../store/useConfirmStore.js';
 import { browserCardFor } from '../../lib/confirmations.js';
 import { loadSteps, stopTask } from '../../lib/browserTasks.js';
@@ -18,12 +18,14 @@ import { Button } from '../ui/Button.jsx';
 import { StepFeed } from './StepFeed.jsx';
 import { hostOf, taskStatusMeta } from '../../lib/browserFormat.js';
 import { QuestionReply } from './QuestionReply.jsx';
+import { StepShot } from './StepShot.jsx';
 import { cn } from '../../lib/utils.js';
 
 export function TaskCard({ taskId, onDismiss, hint = 'or type "yes"' }) {
   const task = useBrowserStore((s) => s.tasks[taskId]);
   const steps = useBrowserStore((s) => s.steps[taskId]);
   const cardId = useConfirmStore((s) => browserCardFor(s.confirmations, taskId));
+  const cardShot = useConfirmStore((s) => (cardId ? s.confirmations[cardId]?.shot : null));
   const [stopping, setStopping] = useState(false);
   const [error, setError] = useState(null);
 
@@ -78,7 +80,13 @@ export function TaskCard({ taskId, onDismiss, hint = 'or type "yes"' }) {
       </div>
       <p className="text-text-primary break-words">{task.goal}</p>
       <StepFeed steps={steps} />
-      {cardId && <ConfirmCard id={cardId} hint={hint} />}
+      {cardId && (
+        <ConfirmCard
+          id={cardId}
+          hint={hint}
+          media={cardShot && <StepShot taskId={taskId} name={cardShot} label="The page it's about to act on" />}
+        />
+      )}
       {task.status === 'waiting_user' && task.question && (
         <div className="space-y-1.5">
           <p className="text-text-primary">{task.question}</p>
@@ -86,6 +94,7 @@ export function TaskCard({ taskId, onDismiss, hint = 'or type "yes"' }) {
         </div>
       )}
       {!live && task.summary && <p className="text-text-secondary break-words">{task.summary}</p>}
+      {FINAL.has(task.status) && <StepShot taskId={taskId} name="final" label="Last page" />}
       {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   );

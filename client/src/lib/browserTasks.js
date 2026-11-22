@@ -56,7 +56,7 @@ function applyToStore(e) {
       break;
     case 'needs_confirmation':
       if (!e.confirmation_id) break;
-      trackBrowserStep({ id: e.confirmation_id, summary: e.summary, taskId: e.taskId });
+      trackBrowserStep({ id: e.confirmation_id, summary: e.summary, taskId: e.taskId, shot: e.step?.shot_path });
       patchTask(e.taskId, { status: 'waiting_confirmation' });
       break;
     case 'step': {
@@ -103,7 +103,7 @@ async function findParkedStep(taskId) {
     (a) => a.tool === 'browser_step' && a.status === 'awaiting_confirmation' && a.args?.task_id === taskId
   );
   if (!row) return;
-  trackBrowserStep({ id: row.id, summary: row.summary, taskId });
+  trackBrowserStep({ id: row.id, summary: row.summary, taskId, shot: row.args?.shot });
 }
 
 /**
