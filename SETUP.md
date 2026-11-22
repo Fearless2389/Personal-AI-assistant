@@ -103,6 +103,8 @@ Optional:
 TAVILY_API_KEY=...               # real web search (free ~1,000/month at tavily.com); without it, Wikipedia only
 HOTKEY_SECRET=...                # any long random value; enables the global Alt+Space tray helper
 OWNER_CONTEXT="..."              # your situation in a sentence or two (job, studies, focus); the assistant assumes it
+OWNER_LINKS="GitHub: github.com/<you>; LinkedIn: ..."  # your own accounts, so "open my repo" opens the exact page
+OWNER_COUNTRY=India              # which country's version of a shop to open (default India: amazon.in)
 GEMINI_CHAT_MODEL=gemini-flash-latest              # chat model (default)
 GEMINI_CHAT_FALLBACK_MODEL=gemini-flash-lite-latest # used when the first one hangs or is overloaded
 ```

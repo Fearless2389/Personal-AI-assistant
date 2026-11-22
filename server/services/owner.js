@@ -9,3 +9,10 @@ export const OWNER_NAME = 'Ruthvik';
 export const OWNER_CONTEXT =
   process.env.OWNER_CONTEXT?.trim() ||
   `${OWNER_NAME} is a student. Help with studies, projects, applications and day-to-day life.`;
+
+// Ruthvik's own accounts ("GitHub: github.com/<user>; LinkedIn: …"), so "open my repo" can reach
+// the exact page instead of a site's home page. Personal, so .env (OWNER_LINKS); none by default.
+export const OWNER_LINKS = process.env.OWNER_LINKS?.trim() || '';
+
+// Which country's version of a shop or service to open (amazon.in, not amazon.com).
+export const OWNER_COUNTRY = process.env.OWNER_COUNTRY?.trim() || 'India';

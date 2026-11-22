@@ -2,7 +2,7 @@
 // task, check on it, stop it, and answer its question. Declarations are offered to the model only
 // when BROWSER_AGENT_ENABLED=1, and this file imports nothing heavy: the runner (and Playwright)
 // load on the first call, so gemini.js can list these without an import cycle.
-import { OWNER_NAME } from '../owner.js';
+import { OWNER_NAME, OWNER_COUNTRY } from '../owner.js';
 import { checkNavigation, testOrigins } from './urlPolicy.js';
 
 export const browserAgentEnabled = () => process.env.BROWSER_AGENT_ENABLED === '1';
@@ -28,7 +28,10 @@ export const BROWSE_DECLARATIONS = [
             'The browser agent cannot see this conversation.'
         },
         kind: KIND,
-        start_url: { type: 'STRING', description: 'Optional: the site to start on (https://…).' }
+        start_url: {
+          type: 'STRING',
+          description: `Optional: the site to start on (https://…). For shops, the ${OWNER_COUNTRY} version (amazon.in, not amazon.com).`
+        }
       },
       required: ['goal']
     }
